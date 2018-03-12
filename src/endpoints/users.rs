@@ -8,6 +8,7 @@ use rocket::response::{content, status};
 use rocket::http::Status;
 use rocket_contrib::Json;
 
+/// Create user record in database
 fn create_user<'a>(conn: &PgConnection, new_user: NewUser<'a>) -> User {
     use db::schema::users;
 

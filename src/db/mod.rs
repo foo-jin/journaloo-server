@@ -1,10 +1,11 @@
+use std::ops::Deref;
+
 use diesel::pg::PgConnection;
 use r2d2;
 use r2d2_diesel::ConnectionManager;
 use rocket::http::Status;
 use rocket::request::{self, FromRequest};
 use rocket::{Outcome, Request, State};
-use std::ops::Deref;
 
 pub mod schema;
 pub mod models;
@@ -15,7 +16,7 @@ pub type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
 // initializes a data pool
 pub fn init_pool(db_url: String) -> Pool {
     let manager = ConnectionManager::<PgConnection>::new(db_url);
-    r2d2::Pool::new(manager).expect("db pool")
+    r2d2::Pool::new(manager).expect("failed to initialize db pool")
 }
 
 // Connection request guard: a wrapper around an r2d2 pooled connection.
