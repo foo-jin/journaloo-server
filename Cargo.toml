@@ -9,7 +9,8 @@ r2d2-diesel = "*"
 rocket = "0.3.6"
 rocket_codegen = "0.3.6"
 rocket_contrib = "*"
+chrono = "0.4.0"
 
 [dependencies.diesel]
-features = ["postgres"]
+features = ["postgres", "chrono"]
 version = "*"
