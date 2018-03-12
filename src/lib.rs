@@ -11,6 +11,8 @@ extern crate rocket;
 #[macro_use]
 extern crate rocket_contrib;
 
+use endpoints::users::signup;
+
 use std::env;
 
 use rocket::Rocket;
