@@ -1,5 +1,6 @@
 #![feature(plugin)]
 #![plugin(rocket_codegen)]
+#![feature(custom_attribute)]
 
 extern crate chrono;
 #[macro_use]
@@ -12,7 +13,7 @@ extern crate rocket;
 extern crate rocket_contrib;
 
 use dotenv::dotenv;
-use endpoints::users::signup;
+use endpoints::users::*;
 use rocket::Rocket;
 use std::env;
 

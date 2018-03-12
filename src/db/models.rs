@@ -1,5 +1,5 @@
 use chrono::NaiveDateTime;
-use super::schema::users;
+use super::schema::*;
 
 #[derive(Queryable)]
 #[primary_key(id)]
