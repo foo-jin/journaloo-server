@@ -1,11 +1,10 @@
 use db::DbConn;
 use db::models::{NewUser, User};
-
 use diesel;
-use diesel::prelude::*;
 use diesel::pg::PgConnection;
-use rocket::response::{content, status};
+use diesel::prelude::*;
 use rocket::http::Status;
+use rocket::response::{content, status};
 use rocket_contrib::Json;
 
 /// Create user record in database

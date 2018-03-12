@@ -11,12 +11,10 @@ extern crate rocket;
 #[macro_use]
 extern crate rocket_contrib;
 
-use endpoints::users::signup;
-
-use std::env;
-
-use rocket::Rocket;
 use dotenv::dotenv;
+use endpoints::users::signup;
+use rocket::Rocket;
+use std::env;
 
 mod db;
 mod endpoints;
