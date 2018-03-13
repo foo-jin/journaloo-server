@@ -13,7 +13,7 @@ extern crate rocket;
 extern crate rocket_contrib;
 
 use dotenv::dotenv;
-use endpoints::users::*;
+use endpoints::*;
 use rocket::Rocket;
 use std::env;
 
