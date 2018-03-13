@@ -1,4 +1,7 @@
 use chrono::NaiveDateTime;
+use diesel;
+use diesel::pg::PgConnection;
+use diesel::prelude::*;
 use super::schema::*;
 
 #[derive(Queryable)]
@@ -11,12 +14,22 @@ pub struct User {
     pub date: NaiveDateTime,
 }
 
-#[derive(Insertable)]
+#[derive(Insertable, Deserialize)]
 #[table_name = "users"]
-pub struct NewUser<'a> {
-    pub username: &'a str,
-    pub email: &'a str,
+pub struct NewUser {
+    pub username: String,
+    pub email: String,
     pub password: String,
+}
+
+#[derive(Serialize, Deserialize)]
+#[primary_key(id)]
+#[table_name = "users"]
+pub struct UserInfo {
+    pub id: i32,
+    pub username: String,
+    pub email: String,
+    pub date: NaiveDateTime,
 }
 
 #[derive(Queryable)]
@@ -57,4 +70,28 @@ pub struct NewEntry<'a> {
     pub description: Option<&'a str>,
     pub coordinates: Option<&'a str>,
     pub location: Option<&'a str>,
+}
+
+/// Create user record in database
+pub fn create_user<'a>(conn: &PgConnection, user: NewUser) -> UserInfo {
+    use db::schema::users;
+
+    let user: User = diesel::insert_into(users::table)
+        .values(&user)
+        .get_result(conn)
+        .expect("Error creating user"); // Todo: error handling
+
+    user.into()
+}
+
+impl From<User> for UserInfo {
+    fn from(user: User) -> Self {
+        let User { id, username, email, date, .. } = user;
+        UserInfo {
+            id,
+            username,
+            email,
+            date,
+        }
+    }
 }
