@@ -6,7 +6,7 @@ use rocket::http::Status;
 use rocket::local::Client;
 
 // Note: testing takes rather long
-// TODO: properly mock the database
+// Todo: properly mock the database
 
 #[test]
 fn example() {

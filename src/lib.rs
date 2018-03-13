@@ -30,7 +30,6 @@ pub fn rocket() -> Rocket {
     // We need to make sure our database_url is set in our `.env` file. This will point to
     // our Postgres database.  If none is supplied, the program will error.
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    println!("{}", database_url);
 
     // Initializes database pool with r2d2.
     let pool = db::init_pool(database_url);
