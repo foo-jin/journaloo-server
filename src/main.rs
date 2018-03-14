@@ -1,13 +1,7 @@
-#![feature(plugin)]
-#![plugin(rocket_codegen)]
+extern crate journaloo_server;
 
-extern crate rocket;
-
-#[get("/")]
-fn index() -> &'static str {
-    "Hello, world!"
-}
+use journaloo_server::rocket;
 
 fn main() {
-    rocket::ignite().mount("/", routes![index]).launch();
+    rocket().launch();
 }
