@@ -26,8 +26,7 @@ pub fn init_pool() -> Pool {
     let manager = ConnectionManager::<PgConnection>::new(db_url);
 
     r2d2::Pool::builder()
-        .max_size(20)
-        .min_idle(Some(5))
+        .max_size(5)
         .build(manager)
         .expect("failed to initialize db pool")
 }
@@ -65,19 +64,10 @@ fn get_test_conn() -> DbConn {
     use diesel::Connection;
 
     lazy_static! {
-        static ref POOL: Pool = {
-            dotenv().ok();
-            let db_url = env::var("STAGING_URL").expect("DATABASE_URL must be set");
-            let manager = ConnectionManager::<PgConnection>::new(db_url);
-
-            r2d2::Pool::builder()
-                .max_size(5)
-                .build(manager)
-                .expect("failed to initialize db pool")
-        };
+        static ref test_pool: Pool = init_pool();
     }
 
-    let conn = POOL.get().expect("failed to get db connection");
+    let conn = test_pool.get().expect("failed to get db connection");
     conn.begin_test_transaction();
     DbConn(conn)
 }

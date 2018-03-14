@@ -46,7 +46,7 @@ pub fn create(conn: &PgConnection, user: &NewUser) -> diesel::QueryResult<UserIn
             user.into()
         })
         .map_err(|e| {
-            error!("Database error on user creation: {:?}", e);
+            error!("Failed to create user -- {:?}", e);
             e
         })
 }

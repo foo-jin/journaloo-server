@@ -7,7 +7,7 @@ extern crate chrono;
 #[macro_use]
 extern crate diesel;
 extern crate dotenv;
-extern crate env_logger;
+extern crate pretty_env_logger as env_logger;
 extern crate jsonwebtoken as jwt;
 #[macro_use]
 extern crate lazy_static;
