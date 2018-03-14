@@ -56,7 +56,7 @@ impl Deref for DbConn {
 }
 
 #[cfg(test)]
-/// Creates a test connection to the database specified at the `DATABASE_URL` env variable.
+/// Creates a test database connection
 fn create_test_connection() -> PgConnection {
     use dotenv::dotenv;
     use std::env;
@@ -65,6 +65,7 @@ fn create_test_connection() -> PgConnection {
     dotenv().ok();
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let conn = PgConnection::establish(&database_url).expect("failed to establish db connection");
-    conn.begin_test_transaction().expect("failed to initialize test transaction");
+    conn.begin_test_transaction()
+        .expect("failed to initialize test transaction");
     conn
 }
