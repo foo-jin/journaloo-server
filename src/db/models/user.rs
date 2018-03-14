@@ -26,8 +26,7 @@ pub struct NewUser {
     pub password: String,
 }
 
-#[derive(Serialize, Deserialize)]
-#[table_name = "users"]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct UserInfo {
     pub id: i32,
     pub username: String,
@@ -90,23 +89,31 @@ impl From<User> for UserInfo {
 #[cfg(test)]
 mod tests {
     use db::create_test_connection;
-    use diesel::prelude;
+    use diesel::prelude::*;
+    use diesel::query_builder;
     use dotenv::dotenv;
     use std::env;
     use super::*;
 
     #[test]
     fn create_user() {
+        use db::schema::users;
+        use super::users::dsl::*;
+
         let conn = create_test_connection();
-        let user = NewUser {
+        let new_user = NewUser {
             username: "foo".to_string(),
             email: "foo@bar.com".to_string(),
             password: "asdf".to_string(),
         };
 
-        let UserInfo {username, email, ..} = create(&conn, &user);
+        let user_info = create(&conn, &new_user);
+        let user = users
+            .filter(username.eq(new_user.username))
+            .get_result::<User>(&conn)
+            .expect("error getting result")
+            .into();
 
-        assert_eq!(user.username, username);
-        assert_eq!(user.email, email);
+        assert_eq!(user_info, user);
     }
 }

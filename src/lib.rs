@@ -20,7 +20,7 @@ use endpoints::*;
 use rocket::Rocket;
 use db::init_pool;
 
-pub mod db;
+mod db;
 mod endpoints;
 
 pub fn rocket() -> Rocket {
