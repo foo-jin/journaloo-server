@@ -1,4 +1,5 @@
 use chrono::NaiveDateTime;
+use db::schema::users;
 use diesel;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
@@ -7,7 +8,6 @@ use rocket::http::Status;
 use rocket::Outcome;
 use rocket::request::{self, FromRequest};
 use rocket::Request;
-use super::schema::*;
 
 #[derive(Queryable)]
 pub struct User {
@@ -35,46 +35,8 @@ pub struct UserInfo {
     pub date: NaiveDateTime,
 }
 
-#[derive(Queryable)]
-pub struct Journey {
-    pub id: i32,
-    pub user_id: i32,
-    pub title: String,
-    pub archived: bool,
-    pub start_date: NaiveDateTime,
-    pub end_date: Option<NaiveDateTime>,
-}
-
-#[derive(Insertable)]
-#[table_name = "journeys"]
-pub struct NewJourney<'a> {
-    pub user_id: i32,
-    pub title: &'a str,
-}
-
-#[derive(Queryable)]
-#[table_name = "entries"]
-pub struct Entry {
-    pub id: i32,
-    pub journey_id: i32,
-    pub created: NaiveDateTime,
-    pub archived: bool,
-    pub description: Option<String>,
-    pub coordinates: Option<String>,
-    pub location: Option<String>,
-}
-
-#[derive(Insertable)]
-#[table_name = "entries"]
-pub struct NewEntry<'a> {
-    pub journey_id: i32,
-    pub description: Option<&'a str>,
-    pub coordinates: Option<&'a str>,
-    pub location: Option<&'a str>,
-}
-
 /// Create user record in database
-pub fn create_user(conn: &PgConnection, user: &NewUser) -> UserInfo {
+pub fn create(conn: &PgConnection, user: &NewUser) -> UserInfo {
     use db::schema::users;
 
     let user: User = diesel::insert_into(users::table)
@@ -123,4 +85,20 @@ impl From<User> for UserInfo {
             date,
         }
     }
+}
+
+use dotenv::dotenv;
+use std::env;
+use super::*;
+
+#[cfg(test)]
+mod tests {
+    fn create_test_connection() -> impl Connection {
+        dotenv().ok();
+        let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+        PgConnection::establish(database_url);
+    }
+
+    #[test]
+    fn create_user() {}
 }
