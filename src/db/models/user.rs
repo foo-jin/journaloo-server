@@ -35,15 +35,20 @@ pub struct UserInfo {
 }
 
 /// Create user record in database
-pub fn create(conn: &PgConnection, user: &NewUser) -> UserInfo {
+pub fn create(conn: &PgConnection, user: &NewUser) -> diesel::QueryResult<UserInfo> {
     use db::schema::users;
 
-    let user: User = diesel::insert_into(users::table)
+    diesel::insert_into(users::table)
         .values(user)
-        .get_result(conn)
-        .expect("Error creating user"); // Todo: error handling
-
-    user.into()
+        .get_result::<User>(conn)
+        .map(|user| {
+            info!("Created user \"{}\"", user.username);
+            user.into()
+        })
+        .map_err(|e| {
+            error!("Database error on user creation: {:?}", e);
+            e
+        })
 }
 
 impl<'a, 'r> FromRequest<'a, 'r> for UserInfo {
@@ -53,16 +58,23 @@ impl<'a, 'r> FromRequest<'a, 'r> for UserInfo {
     fn from_request(request: &'a Request<'r>) -> request::Outcome<Self, Self::Error> {
         let token = match request.headers().get_one("Authorization") {
             Some(jwt) => jwt,
-            None => return Outcome::Failure((Status::Unauthorized, ())),
+            None => {
+                debug!("Unauthorized request -- no token present: {}", request);
+                return Outcome::Failure((Status::Unauthorized, ()));
+            }
         };
 
         // Todo: secret key
         // Todo: error matching
         let token = match decode::<UserInfo>(token, b"secret", &Validation::default()) {
             Ok(token) => token,
-            Err(_) => return Outcome::Failure((Status::Unauthorized, ())),
+            Err(_) => {
+                debug!("Unauthorized request -- invalid token: {}", request);
+                return Outcome::Failure((Status::Unauthorized, ()));
+            }
         };
 
+        debug!("Authorized request, username = {}", token.claims.username);
         Outcome::Success(token.claims)
     }
 }
@@ -88,29 +100,30 @@ impl From<User> for UserInfo {
 
 #[cfg(test)]
 mod tests {
-    use db::create_test_connection;
+    use db::get_test_conn;
     use diesel::prelude::*;
     use diesel::query_builder;
     use dotenv::dotenv;
+    use env_logger;
     use std::env;
     use super::*;
 
     #[test]
     fn create_user() {
-        use db::schema::users;
         use super::users::dsl::*;
+        let _ = env_logger::try_init();
 
-        let conn = create_test_connection();
+        let conn = get_test_conn();
         let new_user = NewUser {
             username: "foo".to_string(),
             email: "foo@bar.com".to_string(),
             password: "asdf".to_string(),
         };
 
-        let user_info = create(&conn, &new_user);
+        let user_info = create(&conn, &new_user).unwrap();
         let user = users
             .filter(username.eq(new_user.username))
-            .get_result::<User>(&conn)
+            .get_result::<User>(&*conn)
             .expect("error getting result")
             .into();
 

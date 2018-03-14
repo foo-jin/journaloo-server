@@ -1,4 +1,4 @@
-use bcrypt::{DEFAULT_COST, hash};
+use bcrypt::{hash, DEFAULT_COST};
 use db::DbConn;
 use db::models::user;
 use jwt::{encode, Header};
@@ -10,7 +10,7 @@ use rocket_contrib::Json;
 pub fn signup(user: Json<user::NewUser>, conn: DbConn) -> Result<String, Status> {
     let mut user = user.into_inner();
     user.password = hash(&user.password, DEFAULT_COST).map_err(|_| Status::InternalServerError)?;
-    let user_info = user::create(&conn, &user);
+    let user_info = user::create(&conn, &user).map_err(|_| Status::InternalServerError)?;
     let token = encode(&Header::default(), &user_info, "secret".as_ref()) // Todo: secret key
         .map_err(|_| Status::InternalServerError)?;
 

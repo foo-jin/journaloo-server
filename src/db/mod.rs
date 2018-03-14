@@ -25,7 +25,11 @@ pub fn init_pool() -> Pool {
     let db_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let manager = ConnectionManager::<PgConnection>::new(db_url);
 
-    r2d2::Pool::new(manager).expect("failed to initialize db pool")
+    r2d2::Pool::builder()
+        .max_size(20)
+        .min_idle(Some(5))
+        .build(manager)
+        .expect("failed to initialize db pool")
 }
 
 // Connection request guard: a wrapper around an r2d2 pooled connection.
@@ -57,15 +61,23 @@ impl Deref for DbConn {
 
 #[cfg(test)]
 /// Creates a test database connection
-fn create_test_connection() -> PgConnection {
-    use dotenv::dotenv;
-    use std::env;
+fn get_test_conn() -> DbConn {
     use diesel::Connection;
 
-    dotenv().ok();
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    let conn = PgConnection::establish(&database_url).expect("failed to establish db connection");
-    conn.begin_test_transaction()
-        .expect("failed to initialize test transaction");
-    conn
+    lazy_static! {
+        static ref POOL: Pool = {
+            dotenv().ok();
+            let db_url = env::var("STAGING_URL").expect("DATABASE_URL must be set");
+            let manager = ConnectionManager::<PgConnection>::new(db_url);
+
+            r2d2::Pool::builder()
+                .max_size(5)
+                .build(manager)
+                .expect("failed to initialize db pool")
+        };
+    }
+
+    let conn = POOL.get().expect("failed to get db connection");
+    conn.begin_test_transaction();
+    DbConn(conn)
 }
