@@ -7,6 +7,8 @@ use rocket::request::{self, FromRequest};
 use rocket::Request;
 use rocket::State;
 use std::ops::Deref;
+use std::env;
+use dotenv::dotenv;
 
 pub mod schema;
 pub mod models;
@@ -15,8 +17,14 @@ pub mod models;
 pub type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
 // initializes a data pool
-pub fn init_pool(db_url: String) -> Pool {
+pub fn init_pool() -> Pool {
+    dotenv().ok();
+
+    // We need to make sure our database_url is set in our `.env` file. This will point to
+    // our Postgres database.  If none is supplied, the program will error.
+    let db_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let manager = ConnectionManager::<PgConnection>::new(db_url);
+
     r2d2::Pool::new(manager).expect("failed to initialize db pool")
 }
 
@@ -47,3 +55,15 @@ impl Deref for DbConn {
     }
 }
 
+#[cfg(test)]
+/// Creates a test connection to the database specified at the `DATABASE_URL` env variable.
+pub fn create_test_connection() -> PgConnection {
+    use dotenv::dotenv;
+    use std::env;
+
+    dotenv().ok();
+    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let conn = PgConnection::establish(&database_url).expect("failed to establish db connection");
+    conn.begin_test_transaction().expect("failed to initialize test transaction");
+    conn
+}

@@ -16,23 +16,15 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 
-use dotenv::dotenv;
 use endpoints::*;
 use rocket::Rocket;
-use std::env;
+use db::init_pool;
 
-mod db;
+pub mod db;
 mod endpoints;
 
 pub fn rocket() -> Rocket {
-    dotenv().ok();
-
-    // We need to make sure our database_url is set in our `.env` file. This will point to
-    // our Postgres database.  If none is supplied, the program will error.
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-
-    // Initializes database pool with r2d2.
-    let pool = db::init_pool(database_url);
+    let pool = init_pool();
 
     // Configure our server, and mount all routes.  We don't "launch" the server
     // here, but in our `main` procedure.

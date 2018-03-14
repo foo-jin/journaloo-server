@@ -89,13 +89,12 @@ impl From<User> for UserInfo {
 
 #[cfg(test)]
 mod tests {
+    use db::create_test_connection;
+    use diesel::prelude;
     use dotenv::dotenv;
     use std::env;
     use super::*;
-    use diesel::prelude;
-    use db::create_test_connection;
 
-    /// a test
     #[test]
     fn create_user() {
         let conn = create_test_connection();
