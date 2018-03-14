@@ -87,18 +87,27 @@ impl From<User> for UserInfo {
     }
 }
 
-use dotenv::dotenv;
-use std::env;
-use super::*;
-
 #[cfg(test)]
 mod tests {
-    fn create_test_connection() -> impl Connection {
-        dotenv().ok();
-        let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-        PgConnection::establish(database_url);
-    }
+    use dotenv::dotenv;
+    use std::env;
+    use super::*;
+    use diesel::prelude;
+    use db::create_test_connection;
+
 
     #[test]
-    fn create_user() {}
+    fn create_user() {
+        let conn = create_test_connection();
+        let user = NewUser {
+            username: "foo".to_string(),
+            email: "foo@bar.com".to_string(),
+            password: "asdf".to_string(),
+        };
+
+        let UserInfo {username, email, ..} = create(&conn, &user);
+
+        assert_eq!(user.username, username);
+        assert_eq!(user.email, email);
+    }
 }
