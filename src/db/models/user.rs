@@ -95,7 +95,7 @@ mod tests {
     use diesel::prelude;
     use db::create_test_connection;
 
-
+    /// a test
     #[test]
     fn create_user() {
         let conn = create_test_connection();
