@@ -10,8 +10,8 @@ rocket = "0.3.6"
 rocket_codegen = "0.3.6"
 rocket_contrib = "*"
 chrono = { version = "0.4.0", features = ["serde"]}
-serde = "1.0.30"
-serde_derive = "1.0.30"
+serde = "^1"
+serde_derive = "^1"
 bcrypt = "0.1.5"
 jsonwebtoken = "2"
 
