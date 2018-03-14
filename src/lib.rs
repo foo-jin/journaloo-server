@@ -30,15 +30,10 @@ pub fn rocket() -> Rocket {
     // here, but in our `main` procedure.
     rocket::ignite()
         .manage(pool)
-        .mount("/", routes![index, certbot, user::signup])
+        .mount("/", routes![index, user::signup])
 }
 
 #[get("/")]
 fn index() -> &'static str {
     "Hello, world!"
-}
-
-#[get("/.well-known/acme-challenge")]
-fn certbot() -> String {
-    ::std::env::var("LETS_ENCRYPT_CHALLENGE").unwrap_or_else(|_| "not set".to_string())
 }
