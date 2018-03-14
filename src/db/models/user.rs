@@ -120,13 +120,13 @@ mod tests {
             password: "asdf".to_string(),
         };
 
-        let user_info = create(&conn, &new_user).unwrap();
-        let user = users
+        let expected = create(&conn, &new_user).unwrap();
+        let result = users
             .filter(username.eq(new_user.username))
-            .get_result::<User>(&*conn)
+            .first::<User>(&*conn)
             .expect("error getting result")
             .into();
 
-        assert_eq!(user_info, user);
+        assert_eq!(expected, result);
     }
 }
