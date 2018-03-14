@@ -87,14 +87,14 @@ impl From<User> for UserInfo {
     }
 }
 
-use db::create_test_connection;
-use diesel::prelude;
-use dotenv::dotenv;
-use std::env;
-use super::*;
-
 #[cfg(test)]
 mod tests {
+    use dotenv::dotenv;
+    use std::env;
+    use super::*;
+    use diesel::prelude;
+    use db::create_test_connection;
+
     /// a test
     #[test]
     fn create_user() {
