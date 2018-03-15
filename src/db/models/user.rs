@@ -100,10 +100,7 @@ impl From<User> for UserInfo {
 mod tests {
     use db::get_test_conn;
     use diesel::prelude::*;
-    use diesel::query_builder;
-    use dotenv::dotenv;
     use env_logger;
-    use std::env;
     use super::*;
 
     #[test]

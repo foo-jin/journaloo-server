@@ -4,7 +4,7 @@ use db::models::user::{self, NewUser, User, UserInfo};
 use db::schema::users::dsl::*;
 use diesel;
 use diesel::prelude::*;
-use jwt::{self, encode, Header};
+use jwt::{self, Header};
 use rocket::http::Status;
 use rocket_contrib::Json;
 use std::fmt::Debug;
@@ -70,15 +70,18 @@ pub struct UserLogin {
     password: String,
 }
 
-#[post("/user/login", data = "<user>")]
-pub fn login(user: Json<UserLogin>, conn: DbConn) -> Result<String, Status> {
-    let user_info = users
-        .filter(username.eq(&user.username))
+#[post("/user/login", data = "<user_login>")]
+pub fn login(user_login: Json<UserLogin>, conn: DbConn) -> Result<String, Status> {
+    let user = users
+        .filter(username.eq(&user_login.username))
         .first::<User>(&*conn)
-        .map(Into::into)
         .map_err(log_err)?;
 
-    let token = issue_token(&user_info).map_err(log_err)?;
+    if !bcrypt::verify(&user_login.password, &user.password).map_err(log_err)? {
+        return Err(Status::Unauthorized);
+    }
+
+    let token = issue_token(&user.into()).map_err(log_err)?;
 
     Ok(token)
 }
@@ -95,5 +98,5 @@ fn hash_password(user: &mut NewUser) -> Result<(), bcrypt::BcryptError> {
 
 // Todo: secret key
 fn issue_token(user_info: &UserInfo) -> jwt::errors::Result<String> {
-    encode(&Header::default(), user_info, "secret".as_ref())
+    jwt::encode(&Header::default(), user_info, "secret".as_ref())
 }

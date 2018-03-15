@@ -8,7 +8,6 @@ extern crate serde_json;
 
 use journaloo_server::rocket as launch;
 use journaloo_server::db::models::user::UserInfo;
-use jwt::{decode, TokenData, Validation};
 use rocket::http::{ContentType, Status};
 use rocket::local::Client;
 use serde_json::from_str;
@@ -22,6 +21,7 @@ lazy_static! {
 }
 
 #[test]
+#[ignore]
 fn get() {
     let client = Client::new(launch()).expect("valid rocket instance");
     let mut response = client.get(format!("/user/{}", JONDOE.id)).dispatch();

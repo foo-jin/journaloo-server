@@ -59,15 +59,17 @@ impl Deref for DbConn {
 }
 
 #[cfg(test)]
+#[allow(non_upper_case_globals)]
 /// Creates a test database connection
 fn get_test_conn() -> DbConn {
     use diesel::Connection;
 
     lazy_static! {
+
         static ref test_pool: Pool = init_pool();
     }
 
     let conn = test_pool.get().expect("failed to get db connection");
-    conn.begin_test_transaction().unwrap("failed to initialize test transaction");
+    conn.begin_test_transaction().expect("failed to initialize test transaction");
     DbConn(conn)
 }
