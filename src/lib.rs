@@ -37,9 +37,10 @@ pub fn rocket() -> Rocket {
 
     // Configure our server, and mount all routes.  We don't "launch" the server
     // here, but in our `main` procedure.
-    rocket::ignite()
-        .manage(pool)
-        .mount("/", routes![index, user::signup, user::update])
+    rocket::ignite().manage(pool).mount(
+        "/",
+        routes![index, user::signup, user::update, user::delete],
+    )
 }
 
 #[get("/")]
