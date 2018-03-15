@@ -2,7 +2,7 @@ table! {
     entries (id) {
         id -> Int4,
         journey_id -> Int4,
-        created -> Nullable<Timestamp>,
+        created -> Timestamp,
         archived -> Bool,
         description -> Nullable<Varchar>,
         coordinates -> Nullable<Varchar>,

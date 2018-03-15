@@ -49,6 +49,7 @@ pub fn rocket() -> Rocket {
             user::delete,
             user::login,
             user::get_by_id
+            user::reset_password
         ],
     )
 }
