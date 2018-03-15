@@ -5,14 +5,19 @@ use db::schema::users::dsl::*;
 use diesel;
 use diesel::prelude::*;
 use jwt::{self, Header};
+use lettre::smtp::{SmtpTransport, SmtpTransportBuilder};
+use lettre::smtp::authentication::Mechanism;
+use lettre::smtp::SUBMISSION_PORT;
+use lettre_email::EmailBuilder;
 use rocket::http::Status;
 use rocket_contrib::Json;
 use std::fmt::Debug;
+use rocket::response::status;
 
 /// Register a new user.
 /// Will return `Status::BadRequest` on conflicting username or email.
 #[post("/user", format = "application/json", data = "<user>")]
-pub fn signup(user: Json<NewUser>, conn: DbConn) -> Result<String, Status> {
+pub fn signup(user: Json<NewUser>, conn: DbConn) -> Result<status::Created<String>, Status> {
     use diesel::result::Error;
 
     let mut user = user.into_inner();
@@ -35,7 +40,7 @@ pub fn signup(user: Json<NewUser>, conn: DbConn) -> Result<String, Status> {
     let user_info = user::create(&conn, &user).map_err(log_err)?;
     let token = issue_token(&user_info).map_err(log_err)?;
 
-    Ok(token)
+    Ok(status::Created(String::new(), Some(token)))
 }
 
 #[put("/user", format = "application/json", data = "<updated_user>")]
@@ -72,10 +77,15 @@ pub struct UserLogin {
 
 #[post("/user/login", data = "<user_login>")]
 pub fn login(user_login: Json<UserLogin>, conn: DbConn) -> Result<String, Status> {
+    use diesel::result::Error;
+
     let user = users
         .filter(username.eq(&user_login.username))
         .first::<User>(&*conn)
-        .map_err(log_err)?;
+        .map_err(|e| match e {
+            Error::NotFound => Status::NotFound,
+            _ => log_err(e),
+        })?;
 
     if !bcrypt::verify(&user_login.password, &user.password).map_err(log_err)? {
         return Err(Status::Unauthorized);
@@ -84,6 +94,31 @@ pub fn login(user_login: Json<UserLogin>, conn: DbConn) -> Result<String, Status
     let token = issue_token(&user.into()).map_err(log_err)?;
 
     Ok(token)
+}
+
+#[put("/user/reset_password/<email_address>")]
+pub fn reset_password(
+    email_address: String,
+    conn: DbConn,
+) -> Result<status::Accepted<String>, Status> {
+    // Todo: implement reset_password
+    unimplemented!()
+}
+
+#[get("/user/<user_id>")]
+pub fn get_by_id(user_id: i32, conn: DbConn) -> Result<Json<UserInfo>, Status> {
+    use diesel::result::Error;
+
+    let user: UserInfo = users
+        .find(user_id)
+        .first::<User>(&*conn)
+        .map(Into::into)
+        .map_err(|e| match e {
+            Error::NotFound => Status::NotFound,
+            _ => log_err(e),
+        })?;
+
+    Ok(Json(user))
 }
 
 fn log_err<T: Debug>(e: T) -> Status {

@@ -12,6 +12,8 @@ extern crate jsonwebtoken as jwt;
 #[cfg(test)]
 #[macro_use]
 extern crate lazy_static;
+extern crate lettre;
+extern crate lettre_email;
 #[macro_use]
 extern crate log;
 extern crate pretty_env_logger as env_logger;
@@ -40,7 +42,14 @@ pub fn rocket() -> Rocket {
     // here, but in our `main` procedure.
     rocket::ignite().manage(pool).mount(
         "/",
-        routes![index, user::signup, user::update, user::delete, user::login],
+        routes![
+            index,
+            user::signup,
+            user::update,
+            user::delete,
+            user::login,
+            user::get_by_id
+        ],
     )
 }
 

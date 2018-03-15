@@ -21,7 +21,6 @@ lazy_static! {
 }
 
 #[test]
-#[ignore]
 fn get() {
     let client = Client::new(launch()).expect("valid rocket instance");
     let mut response = client.get(format!("/user/{}", JONDOE.id)).dispatch();

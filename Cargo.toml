@@ -16,6 +16,8 @@ bcrypt = "0.1.5"
 jsonwebtoken = "2"
 log = "0.4.1"
 pretty_env_logger = "0.2.2"
+lettre = "0.7.0"
+lettre_email = "0.7.0"
 
 [dependencies.diesel]
 features = ["postgres", "chrono"]
