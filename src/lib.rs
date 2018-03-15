@@ -1,6 +1,7 @@
 #![feature(plugin)]
 #![plugin(rocket_codegen)]
 #![feature(custom_attribute)]
+#![feature(custom_derive)]
 
 extern crate bcrypt;
 extern crate chrono;
@@ -39,7 +40,7 @@ pub fn rocket() -> Rocket {
     // here, but in our `main` procedure.
     rocket::ignite().manage(pool).mount(
         "/",
-        routes![index, user::signup, user::update, user::delete],
+        routes![index, user::signup, user::update, user::delete, user::login],
     )
 }
 

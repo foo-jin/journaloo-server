@@ -4,20 +4,10 @@ use db::models::user::{self, NewUser, User, UserInfo};
 use db::schema::users::dsl::*;
 use diesel;
 use diesel::prelude::*;
-use jwt::{encode, Header};
+use jwt::{self, encode, Header};
 use rocket::http::Status;
 use rocket_contrib::Json;
 use std::fmt::Debug;
-
-fn log_err<T: Debug>(e: T) -> Status {
-    error!("Encountered error: {:?}", e);
-    Status::InternalServerError
-}
-
-fn hash_password(user: &mut NewUser) -> Result<(), bcrypt::BcryptError> {
-    user.password = hash(&user.password, DEFAULT_COST)?;
-    Ok(())
-}
 
 /// Register a new user.
 /// Will return `Status::BadRequest` on conflicting username or email.
@@ -43,8 +33,7 @@ pub fn signup(user: Json<NewUser>, conn: DbConn) -> Result<String, Status> {
         }
 
     let user_info = user::create(&conn, &user).map_err(log_err)?;
-    // Todo: secret key
-    let token = encode(&Header::default(), &user_info, "secret".as_ref()).map_err(log_err)?;
+    let token = issue_token(&user_info).map_err(log_err)?;
 
     Ok(token)
 }
@@ -73,4 +62,38 @@ pub fn delete(user: UserInfo, conn: DbConn) -> Result<(), Status> {
     info!("deleted {} users", deleted);
 
     Ok(())
+}
+
+#[derive(Deserialize)]
+pub struct UserLogin {
+    username: String,
+    password: String,
+}
+
+#[post("/user/login", data = "<user>")]
+pub fn login(user: Json<UserLogin>, conn: DbConn) -> Result<String, Status> {
+    let user_info = users
+        .filter(username.eq(&user.username))
+        .first::<User>(&*conn)
+        .map(Into::into)
+        .map_err(log_err)?;
+
+    let token = issue_token(&user_info).map_err(log_err)?;
+
+    Ok(token)
+}
+
+fn log_err<T: Debug>(e: T) -> Status {
+    error!("Encountered error: {:?}", e);
+    Status::InternalServerError
+}
+
+fn hash_password(user: &mut NewUser) -> Result<(), bcrypt::BcryptError> {
+    user.password = hash(&user.password, DEFAULT_COST)?;
+    Ok(())
+}
+
+// Todo: secret key
+fn issue_token(user_info: &UserInfo) -> jwt::errors::Result<String> {
+    encode(&Header::default(), user_info, "secret".as_ref())
 }
