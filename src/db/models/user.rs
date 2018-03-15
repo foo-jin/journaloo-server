@@ -9,7 +9,7 @@ use rocket::Outcome;
 use rocket::request::{self, FromRequest};
 use rocket::Request;
 
-#[derive(Queryable)]
+#[derive(Queryable, Debug)]
 pub struct User {
     pub id: i32,
     pub username: String,
@@ -18,7 +18,7 @@ pub struct User {
     pub date: NaiveDateTime,
 }
 
-#[derive(Insertable, Deserialize)]
+#[derive(Insertable, AsChangeset, Deserialize)]
 #[table_name = "users"]
 pub struct NewUser {
     pub username: String,
@@ -26,12 +26,12 @@ pub struct NewUser {
     pub password: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[derive(Identifiable, Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[table_name = "users"]
 pub struct UserInfo {
     pub id: i32,
     pub username: String,
-    pub email: String,
-    pub date: NaiveDateTime,
+    pub email: String
 }
 
 /// Create user record in database
@@ -85,7 +85,6 @@ impl From<User> for UserInfo {
             id,
             username,
             email,
-            date,
             ..
         } = user;
 
@@ -93,7 +92,6 @@ impl From<User> for UserInfo {
             id,
             username,
             email,
-            date,
         }
     }
 }

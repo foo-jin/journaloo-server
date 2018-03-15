@@ -7,12 +7,13 @@ extern crate chrono;
 #[macro_use]
 extern crate diesel;
 extern crate dotenv;
-extern crate pretty_env_logger as env_logger;
 extern crate jsonwebtoken as jwt;
+#[cfg(test)]
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
 extern crate log;
+extern crate pretty_env_logger as env_logger;
 extern crate r2d2;
 extern crate r2d2_diesel;
 extern crate rocket;
@@ -25,7 +26,7 @@ use db::init_pool;
 use endpoints::*;
 use rocket::Rocket;
 
-mod db;
+pub mod db;
 mod endpoints;
 
 pub fn rocket() -> Rocket {
@@ -38,7 +39,7 @@ pub fn rocket() -> Rocket {
     // here, but in our `main` procedure.
     rocket::ignite()
         .manage(pool)
-        .mount("/", routes![index, user::signup])
+        .mount("/", routes![index, user::signup, user::update])
 }
 
 #[get("/")]

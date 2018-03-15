@@ -6,7 +6,7 @@ use rocket::http::Status;
 use rocket::local::Client;
 
 #[test]
-fn example() {
+fn index() {
     let client = Client::new(launch()).expect("valid rocket instance");
     let response = client.get("/").dispatch();
     assert_eq!(response.status(), Status::Ok);
