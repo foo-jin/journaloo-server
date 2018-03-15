@@ -1,6 +1,7 @@
 #![feature(plugin)]
 #![plugin(rocket_codegen)]
 #![feature(custom_attribute)]
+#![feature(custom_derive)]
 
 extern crate bcrypt;
 extern crate chrono;
@@ -8,6 +9,14 @@ extern crate chrono;
 extern crate diesel;
 extern crate dotenv;
 extern crate jsonwebtoken as jwt;
+#[cfg(test)]
+#[macro_use]
+extern crate lazy_static;
+extern crate lettre;
+extern crate lettre_email;
+#[macro_use]
+extern crate log;
+extern crate pretty_env_logger as env_logger;
 extern crate r2d2;
 extern crate r2d2_diesel;
 extern crate rocket;
@@ -16,29 +25,32 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 
-use dotenv::dotenv;
+use db::init_pool;
 use endpoints::*;
 use rocket::Rocket;
-use std::env;
 
-mod db;
+pub mod db;
 mod endpoints;
 
 pub fn rocket() -> Rocket {
-    dotenv().ok();
+    dotenv::dotenv().ok();
 
-    // We need to make sure our database_url is set in our `.env` file. This will point to
-    // our Postgres database.  If none is supplied, the program will error.
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-
-    // Initializes database pool with r2d2.
-    let pool = db::init_pool(database_url);
+    env_logger::init();
+    let pool = init_pool();
 
     // Configure our server, and mount all routes.  We don't "launch" the server
     // here, but in our `main` procedure.
-    rocket::ignite()
-        .manage(pool)
-        .mount("/", routes![index, user::signup])
+    rocket::ignite().manage(pool).mount(
+        "/",
+        routes![
+            index,
+            user::signup,
+            user::update,
+            user::delete,
+            user::login,
+            user::get_by_id
+        ],
+    )
 }
 
 #[get("/")]

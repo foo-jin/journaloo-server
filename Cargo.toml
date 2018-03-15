@@ -14,7 +14,15 @@ serde = "^1"
 serde_derive = "^1"
 bcrypt = "0.1.5"
 jsonwebtoken = "2"
+log = "0.4.1"
+pretty_env_logger = "0.2.2"
+lettre = "0.7.0"
+lettre_email = "0.7.0"
 
 [dependencies.diesel]
 features = ["postgres", "chrono"]
 version = "*"
+
+[dev-dependencies]
+lazy_static = "1.0.0"
+serde_json = "1.0.11"
