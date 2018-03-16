@@ -45,13 +45,20 @@ pub fn signup(user: Json<NewUser>, conn: DbConn) -> Result<status::Created<Strin
 
 /// Update an existing user
 #[put("/user", format = "application/json", data = "<updated_user>")]
-pub fn update(old_user: UserInfo, updated_user: Json<NewUser>, conn: DbConn) -> Result<(), Status> {
+pub fn update(
+    old_user: UserInfo,
+    updated_user: Json<NewUser>,
+    conn: DbConn,
+) -> Result<String, Status> {
     debug!("update endpoint called");
 
     let mut updated_user = updated_user.into_inner();
     hash_password(&mut updated_user).map_err(log_err)?;
 
-    user::update(old_user.id, updated_user, &*conn).map_err(log_err)
+    let user_info = user::update(&old_user, &updated_user, &*conn).map_err(log_err)?;
+    let token = issue_token(&user_info).map_err(log_err)?;
+
+    Ok(token)
 }
 
 /// Delete a user, along with all its journeys and entries.
@@ -101,6 +108,7 @@ pub fn login(user_login: Json<UserLogin>, conn: DbConn) -> Result<String, Status
 
 /// Reset a user's password. Details TBD
 #[put("/user/reset_password/<email_address>")]
+#[allow(unused_variables)]
 pub fn reset_password(
     email_address: String,
     conn: DbConn,

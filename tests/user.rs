@@ -7,7 +7,7 @@ extern crate serde;
 extern crate serde_json;
 
 use journaloo_server::rocket as launch;
-use journaloo_server::db::models::user::{User, UserInfo};
+use journaloo_server::db::models::user::{UserInfo};
 use journaloo_server::endpoints::user::UserLogin;
 use rocket::http::{ContentType, Status};
 use rocket::local::Client;

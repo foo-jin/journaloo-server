@@ -54,15 +54,25 @@ pub fn create(user: &NewUser, conn: &PgConnection) -> diesel::QueryResult<UserIn
         })
 }
 
-pub fn update(user_id: i32, user: UpdateUser, conn: &PgConnection) -> diesel::QueryResult<()> {
+pub fn update(
+    old_user: &UserInfo,
+    user: &UpdateUser,
+    conn: &PgConnection,
+) -> diesel::QueryResult<UserInfo> {
     use db::schema::users::dsl::*;
 
-    let target = users.find(user_id);
-    let updated = diesel::update(target).set(&user).execute(&*conn)?;
-
-    info!("updated {} users", updated);
-
-    Ok(())
+    let target = users.find(old_user.id);
+    diesel::update(target)
+        .set(user)
+        .get_result::<User>(conn)
+        .map(|user| {
+            info!("Updated user \"{}\" to \"{}\"", old_user.username, user.username);
+            user.into()
+        })
+        .map_err(|e| {
+            error!("Failed to create user -- {:?}", e);
+            e
+        })
 }
 
 pub fn delete(user: UserInfo, conn: &PgConnection) -> diesel::QueryResult<()> {
@@ -155,7 +165,7 @@ mod tests {
             password: "asdf".to_string(),
         };
 
-        let expected = create(&conn, &new_user).unwrap();
+        let expected = create(&new_user, &conn).expect("failed to create user");
         let result = users
             .filter(username.eq(new_user.username))
             .first::<User>(&*conn)
@@ -163,5 +173,58 @@ mod tests {
             .into();
 
         assert_eq!(expected, result);
+    }
+
+    #[test]
+    fn update_user() {
+        use super::users::dsl::*;
+        let _ = env_logger::try_init();
+        let conn = get_test_conn();
+
+        let mut new_user = NewUser {
+            username: "foo".to_string(),
+            email: "foo@bar.com".to_string(),
+            password: "asdf".to_string(),
+        };
+
+        let user = create(&new_user, &conn).expect("failed to create user");
+
+        new_user.username = "bar".to_string();
+        let expected = update(&user, &new_user, &*conn).expect("failed to update user");
+        let result = users
+            .filter(username.eq(new_user.username))
+            .first::<User>(&*conn)
+            .expect("error getting result")
+            .into();
+
+        assert_eq!(expected, result);
+    }
+
+    #[test]
+    fn delete_user() {
+        use super::users::dsl::*;
+        use diesel::NotFound;
+
+        let _ = env_logger::try_init();
+        let conn = get_test_conn();
+
+        let new_user = NewUser {
+            username: "foo".to_string(),
+            email: "foo@bar.com".to_string(),
+            password: "asdf".to_string(),
+        };
+
+        let user = create(&new_user, &conn).expect("failed to create user");
+        let uname = user.username.clone();
+        delete(user, &conn).expect("failed to delete user");
+
+        match users
+            .filter(username.eq(&uname))
+            .first::<User>(&*conn)
+        {
+            Err(NotFound) => (),
+            Ok(user) => panic!("user not deleted"),
+            Err(e) => panic!("failed to delete user -- {:?}", e),
+        }
     }
 }
