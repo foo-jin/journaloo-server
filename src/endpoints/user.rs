@@ -1,7 +1,6 @@
 use bcrypt::{self, DEFAULT_COST};
 use db::DbConn;
 use db::models::user::{self, NewUser, User, UserInfo};
-use diesel;
 use diesel::prelude::*;
 use jwt::{self, Header};
 use lettre::smtp::{SmtpTransport, SmtpTransportBuilder};
@@ -47,21 +46,12 @@ pub fn signup(user: Json<NewUser>, conn: DbConn) -> Result<status::Created<Strin
 /// Update an existing user
 #[put("/user", format = "application/json", data = "<updated_user>")]
 pub fn update(old_user: UserInfo, updated_user: Json<NewUser>, conn: DbConn) -> Result<(), Status> {
-    use db::schema::users::dsl::*;
     debug!("update endpoint called");
 
     let mut updated_user = updated_user.into_inner();
     hash_password(&mut updated_user).map_err(log_err)?;
 
-    let target = users.find(old_user.id);
-    let updated = diesel::update(target)
-        .set(&updated_user)
-        .execute(&*conn)
-        .map_err(log_err)?;
-
-    info!("updated {} users", updated);
-
-    Ok(())
+    user::update(old_user.id, updated_user, &*conn).map_err(log_err)
 }
 
 /// Delete a user, along with all its journeys and entries.

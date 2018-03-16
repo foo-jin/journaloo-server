@@ -26,6 +26,8 @@ pub struct NewUser {
     pub password: String,
 }
 
+type UpdateUser = NewUser;
+
 #[derive(Identifiable, Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[table_name = "users"]
 pub struct UserInfo {
@@ -52,12 +54,22 @@ pub fn create(user: &NewUser, conn: &PgConnection) -> diesel::QueryResult<UserIn
         })
 }
 
+pub fn update(user_id: i32, user: UpdateUser, conn: &PgConnection) -> diesel::QueryResult<()> {
+    use db::schema::users::dsl::*;
+
+    let target = users.find(user_id);
+    let updated = diesel::update(target).set(&user).execute(&*conn)?;
+
+    info!("updated {} users", updated);
+
+    Ok(())
+}
+
 pub fn delete(user: UserInfo, conn: &PgConnection) -> diesel::QueryResult<()> {
     use db::schema::users::dsl::*;
     use db::schema::journeys::dsl::*;
     use db::models::journey::Journey;
     use db::models::entry::Entry;
-    debug!("delete endpoint called");
 
     let mut del_journeys = 0;
     let mut del_entries = 0;
