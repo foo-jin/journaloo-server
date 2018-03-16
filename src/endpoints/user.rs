@@ -95,10 +95,10 @@ pub fn delete(user: UserInfo, conn: DbConn) -> Result<(), Status> {
 }
 
 /// Login details of a user
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct UserLogin {
-    username: String,
-    password: String,
+    pub username: String,
+    pub password: String,
 }
 
 /// Grant an auth token to a user if the credentials match.
@@ -106,19 +106,33 @@ pub struct UserLogin {
 pub fn login(user_login: Json<UserLogin>, conn: DbConn) -> Result<String, Status> {
     use diesel::result::Error;
 
+    debug!("Login route called");
+
     let user = users
         .filter(username.eq(&user_login.username))
         .first::<User>(&*conn)
         .map_err(|e| match e {
-            Error::NotFound => Status::NotFound,
+            Error::NotFound => {
+                debug!("user not found!");
+                Status::NotFound
+            }
             _ => log_err(e),
         })?;
 
+    debug!("user found");
+    debug!("verifying password");
+
     if !bcrypt::verify(&user_login.password, &user.password).map_err(log_err)? {
+        debug!("couldn't verify password");
         return Err(Status::Unauthorized);
     }
 
+    debug!("verified password");
+    debug!("creating token");
+
     let token = issue_token(&user.into()).map_err(log_err)?;
+
+    debug!("created token");
 
     Ok(token)
 }

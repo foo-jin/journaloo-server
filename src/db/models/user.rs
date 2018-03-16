@@ -31,7 +31,7 @@ pub struct NewUser {
 pub struct UserInfo {
     pub id: i32,
     pub username: String,
-    pub email: String
+    pub email: String,
 }
 
 /// Create user record in database

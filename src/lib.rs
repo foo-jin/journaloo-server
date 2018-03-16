@@ -30,7 +30,7 @@ use endpoints::*;
 use rocket::Rocket;
 
 pub mod db;
-mod endpoints;
+pub mod endpoints;
 
 pub fn rocket() -> Rocket {
     dotenv::dotenv().ok();

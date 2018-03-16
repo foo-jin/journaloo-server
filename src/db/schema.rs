@@ -34,8 +34,4 @@ table! {
 joinable!(entries -> journeys (journey_id));
 joinable!(journeys -> users (user_id));
 
-allow_tables_to_appear_in_same_query!(
-    entries,
-    journeys,
-    users,
-);
+allow_tables_to_appear_in_same_query!(entries, journeys, users,);
