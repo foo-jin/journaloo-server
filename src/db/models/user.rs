@@ -36,7 +36,7 @@ pub struct UserInfo {
     pub email: String,
 }
 
-/// Create user record in database
+/// Creates a user record in the database
 pub fn create(user: &NewUser, conn: &PgConnection) -> diesel::QueryResult<UserInfo> {
     use db::schema::users::dsl::*;
     debug!("creating user record in db");
@@ -54,6 +54,7 @@ pub fn create(user: &NewUser, conn: &PgConnection) -> diesel::QueryResult<UserIn
         })
 }
 
+/// Updates a user record in the database
 pub fn update(
     old_user: &UserInfo,
     user: &UpdateUser,
@@ -67,17 +68,18 @@ pub fn update(
         .get_result::<User>(conn)
         .map(|user| {
             info!(
-                "Updated user \"{}\" to \"{}\"",
-                old_user.username, user.username
+                "Updated user \"{}\" (previously \"{}\")",
+                user.username, old_user.username
             );
             user.into()
         })
         .map_err(|e| {
-            error!("Failed to create user -- {:?}", e);
+            error!("Failed to update user -- {:?}", e);
             e
         })
 }
 
+/// Deletes a user, and its owned journeys and entries
 pub fn delete(user: UserInfo, conn: &PgConnection) -> diesel::QueryResult<()> {
     use db::schema::users::dsl::*;
     use db::schema::journeys::dsl::*;
@@ -109,6 +111,9 @@ impl<'a, 'r> FromRequest<'a, 'r> for UserInfo {
 
     /// Request guard for user authentication
     fn from_request(request: &'a Request<'r>) -> request::Outcome<Self, Self::Error> {
+        use SECRET;
+        debug!("verifying auth token");
+
         let token = match request.headers().get_one("Authorization") {
             Some(jwt) => jwt,
             None => {
@@ -117,12 +122,10 @@ impl<'a, 'r> FromRequest<'a, 'r> for UserInfo {
             }
         };
 
-        // Todo: secret key
-        // Todo: error matching
-        let token = match decode::<UserInfo>(token, b"secret", &Validation::default()) {
+        let token = match decode::<UserInfo>(token, SECRET.as_bytes(), &Validation::default()) {
             Ok(token) => token,
-            Err(_) => {
-                debug!("Unauthorized request -- invalid token: {}", request);
+            Err(e) => {
+                debug!("Unauthorized request -- {:?}: {}", e, request);
                 return Outcome::Failure((Status::Unauthorized, ()));
             }
         };
@@ -159,9 +162,10 @@ mod tests {
     #[test]
     fn create_user() {
         use super::users::dsl::*;
-        let _ = env_logger::try_init();
 
+        let _ = env_logger::try_init();
         let conn = get_test_conn();
+
         let new_user = NewUser {
             username: "foo".to_string(),
             email: "foo@bar.com".to_string(),
@@ -181,6 +185,7 @@ mod tests {
     #[test]
     fn update_user() {
         use super::users::dsl::*;
+
         let _ = env_logger::try_init();
         let conn = get_test_conn();
 
@@ -223,7 +228,7 @@ mod tests {
 
         match users.filter(username.eq(&uname)).first::<User>(&*conn) {
             Err(NotFound) => (),
-            Ok(user) => panic!("user not deleted"),
+            Ok(_user) => panic!("user not deleted"),
             Err(e) => panic!("failed to delete user -- {:?}", e),
         }
     }

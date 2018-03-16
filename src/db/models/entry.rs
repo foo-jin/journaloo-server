@@ -2,7 +2,7 @@ use chrono::NaiveDateTime;
 use db::schema::entries;
 use db::models::journey::Journey;
 
-#[derive(Queryable, Identifiable, Associations)]
+#[derive(Queryable, Identifiable, Associations, Serialize)]
 #[table_name = "entries"]
 #[belongs_to(Journey)]
 pub struct Entry {
@@ -15,11 +15,11 @@ pub struct Entry {
     pub location: Option<String>,
 }
 
-#[derive(Insertable)]
+#[derive(Insertable, Deserialize)]
 #[table_name = "entries"]
-pub struct NewEntry<'a> {
+pub struct NewEntry {
     pub journey_id: i32,
-    pub description: Option<&'a str>,
-    pub coordinates: Option<&'a str>,
-    pub location: Option<&'a str>,
+    pub description: Option<String>,
+    pub coordinates: Option<String>,
+    pub location: Option<String>,
 }
