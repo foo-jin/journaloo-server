@@ -1,7 +1,6 @@
 use bcrypt::{self, DEFAULT_COST};
 use db::DbConn;
 use db::models::user::{self, NewUser, User, UserInfo};
-use db::schema::users::dsl::*;
 use diesel;
 use diesel::prelude::*;
 use jwt::{self, Header};
@@ -18,26 +17,28 @@ use rocket::response::status;
 /// Will return `Status::BadRequest` on conflicting username or email.
 #[post("/user", format = "application/json", data = "<user>")]
 pub fn signup(user: Json<NewUser>, conn: DbConn) -> Result<status::Created<String>, Status> {
+    use db::schema::users::dsl::*;
     use diesel::result::Error;
+    debug!("signup endpoint called");
 
     let mut user = user.into_inner();
     hash_password(&mut user).map_err(log_err)?;
 
-    // check for duplicate users
+    debug!("checking for duplicate users");
     match users
         .filter(username.eq(&user.username))
         .or_filter(email.eq(&user.email))
         .first::<User>(&*conn)
-        {
-            Err(Error::NotFound) => (),
-            Ok(v) => {
-                debug!("duplicate user found: {:?}", v);
-                return Err(Status::BadRequest);
-            }
-            Err(e) => return Err(log_err(e)),
+    {
+        Err(Error::NotFound) => (),
+        Ok(v) => {
+            debug!("duplicate user found: {:?}", v);
+            return Err(Status::BadRequest);
         }
+        Err(e) => return Err(log_err(e)),
+    }
 
-    let user_info = user::create(&conn, &user).map_err(log_err)?;
+    let user_info = user::create(&user, &conn).map_err(log_err)?;
     let token = issue_token(&user_info).map_err(log_err)?;
 
     Ok(status::Created(String::new(), Some(token)))
@@ -46,6 +47,9 @@ pub fn signup(user: Json<NewUser>, conn: DbConn) -> Result<status::Created<Strin
 /// Update an existing user
 #[put("/user", format = "application/json", data = "<updated_user>")]
 pub fn update(old_user: UserInfo, updated_user: Json<NewUser>, conn: DbConn) -> Result<(), Status> {
+    use db::schema::users::dsl::*;
+    debug!("update endpoint called");
+
     let mut updated_user = updated_user.into_inner();
     hash_password(&mut updated_user).map_err(log_err)?;
 
@@ -63,35 +67,9 @@ pub fn update(old_user: UserInfo, updated_user: Json<NewUser>, conn: DbConn) -> 
 /// Delete a user, along with all its journeys and entries.
 #[delete("/user")]
 pub fn delete(user: UserInfo, conn: DbConn) -> Result<(), Status> {
-    use db::models::journey::Journey;
-    use db::schema::journeys::dsl::*;
-    use db::models::entry::Entry;
+    debug!("delete endpoint called");
 
-    let mut del_journeys = 0;
-    let mut del_entries = 0;
-
-    for journey in Journey::belonging_to(&user)
-        .load::<Journey>(&*conn)
-        .map_err(log_err)?
-        {
-            del_entries += diesel::delete(Entry::belonging_to(&journey))
-                .execute(&*conn)
-                .map_err(log_err)?;
-
-            del_journeys += diesel::delete(journeys.find(journey.id))
-                .execute(&*conn)
-                .map_err(log_err)?;
-        }
-
-    let target = users.find(user.id);
-    let del_users = diesel::delete(target).execute(&*conn).map_err(log_err)?;
-
-    info!(
-        "Deleted {} users, {} journeys, and {} entries",
-        del_users, del_journeys, del_entries
-    );
-
-    Ok(())
+    user::delete(user, &*conn).map_err(log_err)
 }
 
 /// Login details of a user
@@ -102,12 +80,13 @@ pub struct UserLogin {
 }
 
 /// Grant an auth token to a user if the credentials match.
-#[post("/user/login", data = "<user_login>")]
+#[post("/user/login", format = "application/json", data = "<user_login>")]
 pub fn login(user_login: Json<UserLogin>, conn: DbConn) -> Result<String, Status> {
+    use db::schema::users::dsl::*;
     use diesel::result::Error;
+    debug!("login endpoint called");
 
-    debug!("Login route called");
-
+    debug!("verifying user");
     let user = users
         .filter(username.eq(&user_login.username))
         .first::<User>(&*conn)
@@ -119,20 +98,13 @@ pub fn login(user_login: Json<UserLogin>, conn: DbConn) -> Result<String, Status
             _ => log_err(e),
         })?;
 
-    debug!("user found");
     debug!("verifying password");
-
     if !bcrypt::verify(&user_login.password, &user.password).map_err(log_err)? {
         debug!("couldn't verify password");
         return Err(Status::Unauthorized);
     }
 
-    debug!("verified password");
-    debug!("creating token");
-
     let token = issue_token(&user.into()).map_err(log_err)?;
-
-    debug!("created token");
 
     Ok(token)
 }
@@ -150,27 +122,34 @@ pub fn reset_password(
 /// Get a user by user ID
 #[get("/user/<user_id>")]
 pub fn get_by_id(user_id: i32, conn: DbConn) -> Result<Json<UserInfo>, Status> {
+    use db::schema::users::dsl::*;
     use diesel::result::Error;
+    debug!("get_by_id endpoint called");
 
+    debug!("retrieving user");
     let user = users
         .find(user_id)
         .first::<User>(&*conn)
         .map_err(|e| match e {
-            Error::NotFound => Status::NotFound,
+            Error::NotFound => {
+                debug!("user not found");
+                Status::NotFound
+            }
             _ => log_err(e),
         })?;
 
     Ok(Json(user.into()))
 }
 
-/// Log an error with `Error` priority, returning a `Status::InternalServiceError`.
+/// Log an error with Error priority, returning a `Status::InternalServiceError`.
 fn log_err<T: Debug>(e: T) -> Status {
-    error!("Encountered error: {:?}", e);
+    error!("Encountered error -- {:?}", e);
     Status::InternalServerError
 }
 
 /// Hash and salt a password.
 fn hash_password(user: &mut NewUser) -> Result<(), bcrypt::BcryptError> {
+    debug!("hashing password");
     user.password = bcrypt::hash(&user.password, DEFAULT_COST)?;
     Ok(())
 }
@@ -178,5 +157,6 @@ fn hash_password(user: &mut NewUser) -> Result<(), bcrypt::BcryptError> {
 // Todo: secret key
 /// Create an auth token containing a user's account details.
 fn issue_token(user_info: &UserInfo) -> jwt::errors::Result<String> {
+    debug!("creating token");
     jwt::encode(&Header::default(), user_info, "secret".as_ref())
 }

@@ -35,10 +35,11 @@ pub struct UserInfo {
 }
 
 /// Create user record in database
-pub fn create(conn: &PgConnection, user: &NewUser) -> diesel::QueryResult<UserInfo> {
-    use db::schema::users;
+pub fn create(user: &NewUser, conn: &PgConnection) -> diesel::QueryResult<UserInfo> {
+    use db::schema::users::dsl::*;
+    debug!("creating user record in db");
 
-    diesel::insert_into(users::table)
+    diesel::insert_into(users)
         .values(user)
         .get_result::<User>(conn)
         .map(|user| {
@@ -49,6 +50,33 @@ pub fn create(conn: &PgConnection, user: &NewUser) -> diesel::QueryResult<UserIn
             error!("Failed to create user -- {:?}", e);
             e
         })
+}
+
+pub fn delete(user: UserInfo, conn: &PgConnection) -> diesel::QueryResult<()> {
+    use db::schema::users::dsl::*;
+    use db::schema::journeys::dsl::*;
+    use db::models::journey::Journey;
+    use db::models::entry::Entry;
+    debug!("delete endpoint called");
+
+    let mut del_journeys = 0;
+    let mut del_entries = 0;
+
+    for journey in Journey::belonging_to(&user).load::<Journey>(&*conn)? {
+        del_entries += diesel::delete(Entry::belonging_to(&journey)).execute(&*conn)?;
+
+        del_journeys += diesel::delete(journeys.find(journey.id)).execute(&*conn)?;
+    }
+
+    let target = users.find(user.id);
+    let del_users = diesel::delete(target).execute(&*conn)?;
+
+    info!(
+        "Deleted {} users, {} journeys, and {} entries",
+        del_users, del_journeys, del_entries
+    );
+
+    Ok(())
 }
 
 impl<'a, 'r> FromRequest<'a, 'r> for UserInfo {
