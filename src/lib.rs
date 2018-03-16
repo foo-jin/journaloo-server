@@ -2,6 +2,7 @@
 #![plugin(rocket_codegen)]
 #![feature(custom_attribute)]
 #![feature(custom_derive)]
+#![cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
 
 extern crate bcrypt;
 extern crate chrono;

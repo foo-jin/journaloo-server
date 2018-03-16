@@ -66,7 +66,10 @@ pub fn update(
         .set(user)
         .get_result::<User>(conn)
         .map(|user| {
-            info!("Updated user \"{}\" to \"{}\"", old_user.username, user.username);
+            info!(
+                "Updated user \"{}\" to \"{}\"",
+                old_user.username, user.username
+            );
             user.into()
         })
         .map_err(|e| {
@@ -218,10 +221,7 @@ mod tests {
         let uname = user.username.clone();
         delete(user, &conn).expect("failed to delete user");
 
-        match users
-            .filter(username.eq(&uname))
-            .first::<User>(&*conn)
-        {
+        match users.filter(username.eq(&uname)).first::<User>(&*conn) {
             Err(NotFound) => (),
             Ok(user) => panic!("user not deleted"),
             Err(e) => panic!("failed to delete user -- {:?}", e),
