@@ -44,7 +44,7 @@ pub fn create(user: &NewUser, conn: &PgConnection) -> diesel::QueryResult<UserIn
         .values(user)
         .get_result::<User>(conn)
         .map(|user| {
-            info!("Created user \"{}\"", user.username);
+            debug!("Created user {:?}", user);
             user.into()
         })
         .map_err(|e| {
@@ -66,9 +66,9 @@ pub fn update(
         .set(user)
         .get_result::<User>(conn)
         .map(|user| {
-            info!(
-                "Updated user \"{}\" (previously \"{}\")",
-                user.username, old_user.username
+            debug!(
+                "Updated user\n{:?}\nto {:?})",
+                old_user, user
             );
             user.into()
         })
@@ -97,7 +97,7 @@ pub fn delete(user: UserInfo, conn: &PgConnection) -> diesel::QueryResult<()> {
     let target = users.find(user.id);
     let del_users = diesel::delete(target).execute(&*conn)?;
 
-    info!(
+    debug!(
         "Deleted {} users, {} journeys, and {} entries",
         del_users, del_journeys, del_entries
     );

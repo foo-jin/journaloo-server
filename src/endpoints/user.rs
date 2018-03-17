@@ -9,7 +9,7 @@ use jwt::{self, Header};
 //use lettre_email::EmailBuilder;
 use rocket::http::Status;
 use rocket_contrib::Json;
-use std::fmt::Debug;
+use super::{log_db_err, log_err};
 use rocket::response::status;
 
 /// Registers a new user.
@@ -86,20 +86,13 @@ pub struct UserLogin {
 #[post("/user/login", format = "application/json", data = "<user_login>")]
 pub fn login(user_login: Json<UserLogin>, conn: DbConn) -> Result<String, Status> {
     use db::schema::users::dsl::*;
-    use diesel::result::Error;
     debug!("login endpoint called");
 
     debug!("verifying user");
     let user = users
         .filter(username.eq(&user_login.username))
         .first::<User>(&*conn)
-        .map_err(|e| match e {
-            Error::NotFound => {
-                debug!("user not found!");
-                Status::NotFound
-            }
-            _ => log_err(e),
-        })?;
+        .map_err(log_db_err)?;
 
     debug!("verifying password");
     if !bcrypt::verify(&user_login.password, &user.password).map_err(log_err)? {
@@ -130,28 +123,15 @@ pub fn reset_password(
 #[get("/user/<user_id>")]
 pub fn get_by_id(user_id: i32, conn: DbConn) -> Result<Json<UserInfo>, Status> {
     use db::schema::users::dsl::*;
-    use diesel::result::Error;
     debug!("get_by_id endpoint called");
 
     debug!("retrieving user");
     let user = users
         .find(user_id)
         .first::<User>(&*conn)
-        .map_err(|e| match e {
-            Error::NotFound => {
-                debug!("user not found");
-                Status::NotFound
-            }
-            _ => log_err(e),
-        })?;
+        .map_err(log_db_err)?;
 
     Ok(Json(user.into()))
-}
-
-/// Log an error with Error priority, returning a `Status::InternalServiceError`.
-fn log_err<T: Debug>(e: T) -> Status {
-    error!("Encountered error -- {:?}", e);
-    Status::InternalServerError
 }
 
 /// Hash and salt a password.

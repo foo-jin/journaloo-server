@@ -45,12 +45,12 @@ pub fn create(entry: &NewEntry, conn: &PgConnection) -> diesel::QueryResult<Entr
 }
 
 /// Deletes an entry from the database
-pub fn delete(entry: Entry, conn: &PgConnection) -> diesel::QueryResult<()> {
+pub fn archive(entry_id: i32, conn: &PgConnection) -> diesel::QueryResult<()> {
     use db::schema::entries::dsl::*;
 
-    let target = entries.find(entry.id);
-    let deleted = diesel::delete(target).execute(&*conn)?;
-    info!("Deleted {} entries", deleted);
+    let target = entries.find(entry_id);
+    diesel::update(target).set(archived.eq(true)).execute(&*conn)?;
+    info!("Archived entry {}", entry_id);
 
     Ok(())
 }
@@ -82,7 +82,7 @@ mod tests {
     }
 
     #[test]
-    fn delete_entry() {
+    fn archive_entry() {
         use super::entries::dsl::*;
         use diesel::NotFound;
         let conn = db::get_test_conn();
@@ -96,12 +96,12 @@ mod tests {
 
         let entry = create(&new_entry, &conn).expect("failed to create entry");
         let eid = entry.id;
-        delete(entry, &conn).expect("failed to delete entry");
+        archive(eid, &conn).expect("failed to archive entry");
 
         match entries.find(eid).first::<Entry>(&*conn) {
-            Err(NotFound) => (),
-            Ok(_entry) => panic!("entry not deleted"),
-            Err(e) => panic!("failed to delete entry -- {:?}", e),
+            Err(NotFound) => panic!("failed to find entry after archiving"),
+            Ok(entry) => assert!(entry.archived),
+            Err(e) => panic!("failed to archive entry -- {:?}", e),
         }
     }
 }

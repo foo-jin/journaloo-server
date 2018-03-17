@@ -2,7 +2,7 @@ use chrono::NaiveDateTime;
 use db::schema::journeys;
 use db::models::user::UserInfo;
 
-#[derive(Queryable, Identifiable, Associations)]
+#[derive(Queryable, Identifiable, Associations, Debug)]
 #[belongs_to(UserInfo, foreign_key = "user_id")]
 pub struct Journey {
     pub id: i32,
