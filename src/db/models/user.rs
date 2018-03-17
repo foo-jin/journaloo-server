@@ -1,7 +1,6 @@
 use chrono::NaiveDateTime;
 use db::schema::users;
 use diesel;
-use diesel::pg::PgConnection;
 use diesel::prelude::*;
 use jwt::{decode, Validation};
 use rocket::http::Status;
@@ -156,14 +155,11 @@ impl From<User> for UserInfo {
 mod tests {
     use db::get_test_conn;
     use diesel::prelude::*;
-    use env_logger;
     use super::*;
 
     #[test]
     fn create_user() {
         use super::users::dsl::*;
-
-        let _ = env_logger::try_init();
         let conn = get_test_conn();
 
         let new_user = NewUser {
@@ -185,8 +181,6 @@ mod tests {
     #[test]
     fn update_user() {
         use super::users::dsl::*;
-
-        let _ = env_logger::try_init();
         let conn = get_test_conn();
 
         let mut new_user = NewUser {
@@ -212,8 +206,6 @@ mod tests {
     fn delete_user() {
         use super::users::dsl::*;
         use diesel::NotFound;
-
-        let _ = env_logger::try_init();
         let conn = get_test_conn();
 
         let new_user = NewUser {
@@ -223,10 +215,10 @@ mod tests {
         };
 
         let user = create(&new_user, &conn).expect("failed to create user");
-        let uname = user.username.clone();
+        let uid = user.id;
         delete(user, &conn).expect("failed to delete user");
 
-        match users.filter(username.eq(&uname)).first::<User>(&*conn) {
+        match users.find(uid).first::<User>(&*conn) {
             Err(NotFound) => (),
             Ok(_user) => panic!("user not deleted"),
             Err(e) => panic!("failed to delete user -- {:?}", e),

@@ -3,7 +3,6 @@
 use db::DbConn;
 use db::models::entry::{Entry, NewEntry};
 use db::models::user::UserInfo;
-use diesel::prelude::*;
 use rocket::http::Status;
 use rocket_contrib::Json;
 use rocket::response::status;

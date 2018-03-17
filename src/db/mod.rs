@@ -63,6 +63,9 @@ impl Deref for DbConn {
 /// Creates a test database connection
 fn get_test_conn() -> DbConn {
     use diesel::Connection;
+    use env_logger;
+
+    let _ = env_logger::try_init();
 
     lazy_static! {
         static ref test_pool: Pool = init_pool();
