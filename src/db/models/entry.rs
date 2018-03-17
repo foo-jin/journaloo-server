@@ -1,6 +1,6 @@
 use chrono::NaiveDateTime;
-use db::schema::entries;
 use db::models::journey::Journey;
+use db::schema::entries;
 use diesel;
 use diesel::prelude::*;
 
@@ -59,8 +59,8 @@ pub fn archive(entry_id: i32, conn: &PgConnection) -> diesel::QueryResult<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use db;
+    use super::*;
 
     #[test]
     fn create_entry() {

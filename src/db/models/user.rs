@@ -148,8 +148,6 @@ impl From<User> for UserInfo {
     }
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use db::get_test_conn;

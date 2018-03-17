@@ -17,13 +17,11 @@ const PAGE_SIZE: i64 = 10;
 #[post("/entry", format = "application/json", data = "<new_entry>")]
 pub fn create(
     new_entry: Json<NewEntry>,
-    user: UserInfo,
+    _user: UserInfo,
     conn: DbConn,
 ) -> Result<status::Created<Json<Entry>>, Status> {
     use db::schema::journeys::dsl::*;
-    debug!("create endpoint called");
 
-    debug!("verifying journey");
     let journey = journeys
         .find(new_entry.journey_id)
         .first::<Journey>(&*conn)
@@ -43,7 +41,6 @@ pub fn create(
 /// If an unexpected error occurs, fails with an `InternalServiceError` status.
 #[delete("/entry/<entry_id>")]
 pub fn delete(entry_id: i32, conn: DbConn) -> Result<(), Status> {
-    debug!("delete endpoint called");
     entry::archive(entry_id, &*conn).map_err(log_db_err)
 }
 
@@ -59,10 +56,8 @@ pub struct Page {
 #[get("/entry?<page>")]
 pub fn get_all(page: Page, conn: DbConn) -> Result<Json<Vec<Entry>>, Status> {
     use db::schema::entries::dsl::*;
-    debug!("get_all endpoint called");
     let page = page.page;
 
-    debug!("fetching global page");
     let result = entries
         .order(created.desc())
         .offset(page * PAGE_SIZE)
@@ -77,16 +72,10 @@ pub fn get_all(page: Page, conn: DbConn) -> Result<Json<Vec<Entry>>, Status> {
 /// If the journey does not exist, fails with a `NotFound` status.
 /// If an unexpected error occurs, fails with an `InteralServiceError` status.
 #[get("/entry/<jid>?<page>")]
-pub fn get_by_journey(
-    jid: i32,
-    page: Page,
-    conn: DbConn,
-) -> Result<Json<Vec<Entry>>, Status> {
+pub fn get_by_journey(jid: i32, page: Page, conn: DbConn) -> Result<Json<Vec<Entry>>, Status> {
     use db::schema::entries::dsl::*;
-    debug!("get_by_journey endpoint called");
     let page = page.page;
 
-    debug!("fetching journey page");
     let result = entries
         .order(created.desc())
         .filter(journey_id.eq(jid))

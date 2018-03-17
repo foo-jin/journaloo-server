@@ -19,12 +19,10 @@ use rocket::response::status;
 pub fn signup(user: Json<NewUser>, conn: DbConn) -> Result<status::Created<String>, Status> {
     use db::schema::users::dsl::*;
     use diesel::result::Error;
-    debug!("signup endpoint called");
 
     let mut user = user.into_inner();
     hash_password(&mut user).map_err(log_err)?;
 
-    debug!("checking for duplicate users");
     match users
         .filter(username.eq(&user.username))
         .or_filter(email.eq(&user.email))
@@ -52,8 +50,6 @@ pub fn update(
     updated_user: Json<NewUser>,
     conn: DbConn,
 ) -> Result<String, Status> {
-    debug!("update endpoint called");
-
     let mut updated_user = updated_user.into_inner();
     hash_password(&mut updated_user).map_err(log_err)?;
 
@@ -67,8 +63,6 @@ pub fn update(
 /// If an unexpected errors occur, fails with an `InternalServiceError` status.
 #[delete("/user")]
 pub fn delete(user: UserInfo, conn: DbConn) -> Result<(), Status> {
-    debug!("delete endpoint called");
-
     user::delete(user, &*conn).map_err(log_err)
 }
 
@@ -86,15 +80,12 @@ pub struct UserLogin {
 #[post("/user/login", format = "application/json", data = "<user_login>")]
 pub fn login(user_login: Json<UserLogin>, conn: DbConn) -> Result<String, Status> {
     use db::schema::users::dsl::*;
-    debug!("login endpoint called");
 
-    debug!("verifying user");
     let user = users
         .filter(username.eq(&user_login.username))
         .first::<User>(&*conn)
         .map_err(log_db_err)?;
 
-    debug!("verifying password");
     if !bcrypt::verify(&user_login.password, &user.password).map_err(log_err)? {
         debug!("couldn't verify password");
         return Err(Status::Unauthorized);
@@ -123,9 +114,7 @@ pub fn reset_password(
 #[get("/user/<user_id>")]
 pub fn get_by_id(user_id: i32, conn: DbConn) -> Result<Json<UserInfo>, Status> {
     use db::schema::users::dsl::*;
-    debug!("get_by_id endpoint called");
 
-    debug!("retrieving user");
     let user = users
         .find(user_id)
         .first::<User>(&*conn)
