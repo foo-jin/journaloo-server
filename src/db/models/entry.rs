@@ -49,7 +49,9 @@ pub fn archive(entry_id: i32, conn: &PgConnection) -> diesel::QueryResult<()> {
     use db::schema::entries::dsl::*;
 
     let target = entries.find(entry_id);
-    diesel::update(target).set(archived.eq(true)).execute(&*conn)?;
+    diesel::update(target)
+        .set(archived.eq(true))
+        .execute(&*conn)?;
     info!("Archived entry {}", entry_id);
 
     Ok(())

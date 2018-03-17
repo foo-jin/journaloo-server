@@ -15,7 +15,7 @@ fn log_err<T: Debug>(e: T) -> Status {
 
 /// Logs a diesel error with error priority.
 /// If the error was `NotFound`, returns a `NotFound` status.
-/// Else, returns a `InternalServiceError` status.
+/// Else, returns an `InternalServiceError` status.
 fn log_db_err(e: Error) -> Status {
     match e {
         Error::NotFound => Status::NotFound,

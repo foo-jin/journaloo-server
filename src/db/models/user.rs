@@ -66,10 +66,7 @@ pub fn update(
         .set(user)
         .get_result::<User>(conn)
         .map(|user| {
-            debug!(
-                "Updated user\n{:?}\nto {:?})",
-                old_user, user
-            );
+            debug!("Updated user\n{:?}\nto {:?})", old_user, user);
             user.into()
         })
         .map_err(|e| {
@@ -150,6 +147,8 @@ impl From<User> for UserInfo {
         }
     }
 }
+
+
 
 #[cfg(test)]
 mod tests {
