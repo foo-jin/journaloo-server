@@ -7,23 +7,22 @@ use jwt::{self, Header};
 //use lettre::smtp::authentication::Mechanism;
 //use lettre::smtp::SUBMISSION_PORT;
 //use lettre_email::EmailBuilder;
+use super::{log_db_err, log_err};
 use rocket::http::Status;
-use rocket_contrib::Json;
-use std::fmt::Debug;
 use rocket::response::status;
+use rocket_contrib::Json;
 
-/// Register a new user.
-/// Will return `Status::BadRequest` on conflicting username or email.
+/// Registers a new user.
+/// If the username or email is taken, fails with a `BadRequest` status.
+/// If an unexpected error occurs, fails with an `InternalServiceError` status.
 #[post("/user", format = "application/json", data = "<user>")]
 pub fn signup(user: Json<NewUser>, conn: DbConn) -> Result<status::Created<String>, Status> {
     use db::schema::users::dsl::*;
     use diesel::result::Error;
-    debug!("signup endpoint called");
 
     let mut user = user.into_inner();
     hash_password(&mut user).map_err(log_err)?;
 
-    debug!("checking for duplicate users");
     match users
         .filter(username.eq(&user.username))
         .or_filter(email.eq(&user.email))
@@ -43,15 +42,14 @@ pub fn signup(user: Json<NewUser>, conn: DbConn) -> Result<status::Created<Strin
     Ok(status::Created(String::new(), Some(token)))
 }
 
-/// Update an existing user
+/// Updates an existing user.
+/// If unexpected errors occur, fails with an `InternalServiceError` status.
 #[put("/user", format = "application/json", data = "<updated_user>")]
 pub fn update(
     old_user: UserInfo,
     updated_user: Json<NewUser>,
     conn: DbConn,
 ) -> Result<String, Status> {
-    debug!("update endpoint called");
-
     let mut updated_user = updated_user.into_inner();
     hash_password(&mut updated_user).map_err(log_err)?;
 
@@ -61,11 +59,10 @@ pub fn update(
     Ok(token)
 }
 
-/// Delete a user, along with all its journeys and entries.
+/// Deletes a user, along with all its journeys and entries.
+/// If an unexpected errors occur, fails with an `InternalServiceError` status.
 #[delete("/user")]
 pub fn delete(user: UserInfo, conn: DbConn) -> Result<(), Status> {
-    debug!("delete endpoint called");
-
     user::delete(user, &*conn).map_err(log_err)
 }
 
@@ -76,26 +73,19 @@ pub struct UserLogin {
     pub password: String,
 }
 
-/// Grant an auth token to a user if the credentials match.
+/// Grants an auth token to a user if the credentials match.
+/// If the user does not exist, fails with a `NotFound` status.
+/// If the credentials do not match, fails with an `Unauthorized` status.
+/// If an unexpected errors occur, fails with an `InternalServiceError` status.
 #[post("/user/login", format = "application/json", data = "<user_login>")]
 pub fn login(user_login: Json<UserLogin>, conn: DbConn) -> Result<String, Status> {
     use db::schema::users::dsl::*;
-    use diesel::result::Error;
-    debug!("login endpoint called");
 
-    debug!("verifying user");
     let user = users
         .filter(username.eq(&user_login.username))
         .first::<User>(&*conn)
-        .map_err(|e| match e {
-            Error::NotFound => {
-                debug!("user not found!");
-                Status::NotFound
-            }
-            _ => log_err(e),
-        })?;
+        .map_err(log_db_err)?;
 
-    debug!("verifying password");
     if !bcrypt::verify(&user_login.password, &user.password).map_err(log_err)? {
         debug!("couldn't verify password");
         return Err(Status::Unauthorized);
@@ -107,6 +97,7 @@ pub fn login(user_login: Json<UserLogin>, conn: DbConn) -> Result<String, Status
 }
 
 /// Reset a user's password. Details TBD
+/// If an unexpected errors occur, fails with an `InternalServiceError` status.
 #[put("/user/reset_password/<email_address>")]
 #[allow(unused_variables)]
 pub fn reset_password(
@@ -117,32 +108,19 @@ pub fn reset_password(
     unimplemented!()
 }
 
-/// Get a user by user ID
+/// Get a user by user ID.
+/// If the user does not exist, fails with a `NotFound` status.
+/// If an unexpected errors occur, fails with an `InternalServiceError` status.
 #[get("/user/<user_id>")]
 pub fn get_by_id(user_id: i32, conn: DbConn) -> Result<Json<UserInfo>, Status> {
     use db::schema::users::dsl::*;
-    use diesel::result::Error;
-    debug!("get_by_id endpoint called");
 
-    debug!("retrieving user");
     let user = users
         .find(user_id)
         .first::<User>(&*conn)
-        .map_err(|e| match e {
-            Error::NotFound => {
-                debug!("user not found");
-                Status::NotFound
-            }
-            _ => log_err(e),
-        })?;
+        .map_err(log_db_err)?;
 
     Ok(Json(user.into()))
-}
-
-/// Log an error with Error priority, returning a `Status::InternalServiceError`.
-fn log_err<T: Debug>(e: T) -> Status {
-    error!("Encountered error -- {:?}", e);
-    Status::InternalServerError
 }
 
 /// Hash and salt a password.
@@ -152,9 +130,9 @@ fn hash_password(user: &mut NewUser) -> Result<(), bcrypt::BcryptError> {
     Ok(())
 }
 
-// Todo: secret key
 /// Create an auth token containing a user's account details.
 fn issue_token(user_info: &UserInfo) -> jwt::errors::Result<String> {
+    use SECRET;
     debug!("creating token");
-    jwt::encode(&Header::default(), user_info, "secret".as_ref())
+    jwt::encode(&Header::default(), user_info, SECRET.as_bytes())
 }

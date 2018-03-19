@@ -1,14 +1,14 @@
 use diesel::pg::PgConnection;
+use dotenv::dotenv;
 use r2d2;
 use r2d2_diesel::ConnectionManager;
-use rocket::http::Status;
 use rocket::Outcome;
-use rocket::request::{self, FromRequest};
 use rocket::Request;
 use rocket::State;
-use std::ops::Deref;
+use rocket::http::Status;
+use rocket::request::{self, FromRequest};
 use std::env;
-use dotenv::dotenv;
+use std::ops::Deref;
 
 pub mod schema;
 pub mod models;
@@ -20,8 +20,9 @@ pub type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
 pub fn init_pool() -> Pool {
     dotenv().ok();
 
-    // We need to make sure our database_url is set in our `.env` file. This will point to
-    // our Postgres database.  If none is supplied, the program will error.
+    // We need to make sure our database_url is set in our `.env` file. This will
+    // point to our Postgres database.  If none is supplied, the program will
+    // error.
     let db_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let manager = ConnectionManager::<PgConnection>::new(db_url);
 
@@ -63,14 +64,17 @@ impl Deref for DbConn {
 /// Creates a test database connection
 fn get_test_conn() -> DbConn {
     use diesel::Connection;
+    use env_logger;
+
+    let _ = env_logger::try_init();
 
     lazy_static! {
-
         static ref test_pool: Pool = init_pool();
     }
 
     let conn = test_pool.get().expect("failed to get db connection");
     conn.begin_test_transaction()
         .expect("failed to initialize test transaction");
+
     DbConn(conn)
 }

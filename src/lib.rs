@@ -10,7 +10,6 @@ extern crate chrono;
 extern crate diesel;
 extern crate dotenv;
 extern crate jsonwebtoken as jwt;
-#[cfg(test)]
 #[macro_use]
 extern crate lazy_static;
 extern crate lettre;
@@ -29,9 +28,14 @@ extern crate serde_derive;
 use db::init_pool;
 use endpoints::*;
 use rocket::Rocket;
+use std::env;
 
 pub mod db;
 pub mod endpoints;
+
+lazy_static!(
+    static ref SECRET: String = env::var("JWT_SECRET").expect("SECRET must be set");
+);
 
 pub fn rocket() -> Rocket {
     dotenv::dotenv().ok();
@@ -51,6 +55,10 @@ pub fn rocket() -> Rocket {
             user::login,
             user::get_by_id,
             user::reset_password,
+            entry::create,
+            entry::delete,
+            entry::get_all,
+            entry::get_by_journey
         ],
     )
 }

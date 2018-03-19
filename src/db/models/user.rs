@@ -1,13 +1,12 @@
 use chrono::NaiveDateTime;
 use db::schema::users;
 use diesel;
-use diesel::pg::PgConnection;
 use diesel::prelude::*;
 use jwt::{decode, Validation};
-use rocket::http::Status;
 use rocket::Outcome;
-use rocket::request::{self, FromRequest};
 use rocket::Request;
+use rocket::http::Status;
+use rocket::request::{self, FromRequest};
 
 #[derive(Queryable, Debug)]
 pub struct User {
@@ -36,7 +35,7 @@ pub struct UserInfo {
     pub email: String,
 }
 
-/// Create user record in database
+/// Creates a user record in the database
 pub fn create(user: &NewUser, conn: &PgConnection) -> diesel::QueryResult<UserInfo> {
     use db::schema::users::dsl::*;
     debug!("creating user record in db");
@@ -45,7 +44,7 @@ pub fn create(user: &NewUser, conn: &PgConnection) -> diesel::QueryResult<UserIn
         .values(user)
         .get_result::<User>(conn)
         .map(|user| {
-            info!("Created user \"{}\"", user.username);
+            debug!("Created user {:?}", user);
             user.into()
         })
         .map_err(|e| {
@@ -54,6 +53,7 @@ pub fn create(user: &NewUser, conn: &PgConnection) -> diesel::QueryResult<UserIn
         })
 }
 
+/// Updates a user record in the database
 pub fn update(
     old_user: &UserInfo,
     user: &UpdateUser,
@@ -66,23 +66,21 @@ pub fn update(
         .set(user)
         .get_result::<User>(conn)
         .map(|user| {
-            info!(
-                "Updated user \"{}\" to \"{}\"",
-                old_user.username, user.username
-            );
+            debug!("Updated user\n{:?}\nto {:?})", old_user, user);
             user.into()
         })
         .map_err(|e| {
-            error!("Failed to create user -- {:?}", e);
+            error!("Failed to update user -- {:?}", e);
             e
         })
 }
 
+/// Deletes a user, and its owned journeys and entries
 pub fn delete(user: UserInfo, conn: &PgConnection) -> diesel::QueryResult<()> {
-    use db::schema::users::dsl::*;
-    use db::schema::journeys::dsl::*;
-    use db::models::journey::Journey;
     use db::models::entry::Entry;
+    use db::models::journey::Journey;
+    use db::schema::journeys::dsl::*;
+    use db::schema::users::dsl::*;
 
     let mut del_journeys = 0;
     let mut del_entries = 0;
@@ -96,7 +94,7 @@ pub fn delete(user: UserInfo, conn: &PgConnection) -> diesel::QueryResult<()> {
     let target = users.find(user.id);
     let del_users = diesel::delete(target).execute(&*conn)?;
 
-    info!(
+    debug!(
         "Deleted {} users, {} journeys, and {} entries",
         del_users, del_journeys, del_entries
     );
@@ -109,6 +107,9 @@ impl<'a, 'r> FromRequest<'a, 'r> for UserInfo {
 
     /// Request guard for user authentication
     fn from_request(request: &'a Request<'r>) -> request::Outcome<Self, Self::Error> {
+        use SECRET;
+        debug!("verifying auth token");
+
         let token = match request.headers().get_one("Authorization") {
             Some(jwt) => jwt,
             None => {
@@ -117,12 +118,10 @@ impl<'a, 'r> FromRequest<'a, 'r> for UserInfo {
             }
         };
 
-        // Todo: secret key
-        // Todo: error matching
-        let token = match decode::<UserInfo>(token, b"secret", &Validation::default()) {
+        let token = match decode::<UserInfo>(token, SECRET.as_bytes(), &Validation::default()) {
             Ok(token) => token,
-            Err(_) => {
-                debug!("Unauthorized request -- invalid token: {}", request);
+            Err(e) => {
+                debug!("Unauthorized request -- {:?}: {}", e, request);
                 return Outcome::Failure((Status::Unauthorized, ()));
             }
         };
@@ -151,17 +150,15 @@ impl From<User> for UserInfo {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use db::get_test_conn;
     use diesel::prelude::*;
-    use env_logger;
-    use super::*;
 
     #[test]
     fn create_user() {
         use super::users::dsl::*;
-        let _ = env_logger::try_init();
-
         let conn = get_test_conn();
+
         let new_user = NewUser {
             username: "foo".to_string(),
             email: "foo@bar.com".to_string(),
@@ -181,7 +178,6 @@ mod tests {
     #[test]
     fn update_user() {
         use super::users::dsl::*;
-        let _ = env_logger::try_init();
         let conn = get_test_conn();
 
         let mut new_user = NewUser {
@@ -207,8 +203,6 @@ mod tests {
     fn delete_user() {
         use super::users::dsl::*;
         use diesel::NotFound;
-
-        let _ = env_logger::try_init();
         let conn = get_test_conn();
 
         let new_user = NewUser {
@@ -218,12 +212,12 @@ mod tests {
         };
 
         let user = create(&new_user, &conn).expect("failed to create user");
-        let uname = user.username.clone();
+        let uid = user.id;
         delete(user, &conn).expect("failed to delete user");
 
-        match users.filter(username.eq(&uname)).first::<User>(&*conn) {
+        match users.find(uid).first::<User>(&*conn) {
             Err(NotFound) => (),
-            Ok(user) => panic!("user not deleted"),
+            Ok(_user) => panic!("user not deleted"),
             Err(e) => panic!("failed to delete user -- {:?}", e),
         }
     }

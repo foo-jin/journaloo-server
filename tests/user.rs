@@ -1,3 +1,4 @@
+extern crate dotenv;
 extern crate journaloo_server;
 extern crate jsonwebtoken as jwt;
 #[macro_use]
@@ -6,12 +7,14 @@ extern crate rocket;
 extern crate serde;
 extern crate serde_json;
 
-use journaloo_server::rocket as launch;
 use journaloo_server::db::models::user::UserInfo;
 use journaloo_server::endpoints::user::UserLogin;
+use journaloo_server::rocket as launch;
+
 use rocket::http::{ContentType, Status};
 use rocket::local::Client;
 use serde_json::from_str;
+use std::env;
 
 lazy_static! {
     static ref JD_INFO: UserInfo = UserInfo {
@@ -23,6 +26,11 @@ lazy_static! {
     static ref JD_LOGIN: UserLogin = UserLogin {
         username: JD_INFO.username.clone(),
         password: "asdf".to_string(),
+    };
+
+    static ref SECRET: String = {
+        dotenv::dotenv().ok();
+        env::var("JWT_SECRET").expect("SECRET must be set")
     };
 }
 
@@ -53,7 +61,7 @@ fn login() {
 
     let token = jwt::decode::<UserInfo>(
         &response.body_string().expect("no body found"),
-        b"secret",
+        SECRET.as_bytes(),
         &jwt::Validation::default(),
     ).expect("failed to decode auth token");
 
