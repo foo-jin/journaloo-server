@@ -55,6 +55,10 @@ pub fn rocket() -> Rocket {
             user::login,
             user::get_by_id,
             user::reset_password,
+            entry::create,
+            entry::delete,
+            entry::get_all,
+            entry::get_by_journey
         ],
     )
 }

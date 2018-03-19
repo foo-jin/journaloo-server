@@ -1,12 +1,14 @@
+use super::log_db_err;
+
 use db::DbConn;
 use db::models::entry::{self, Entry, NewEntry};
 use db::models::journey::Journey;
 use db::models::user::UserInfo;
+
 use diesel::prelude::*;
 use rocket::http::Status;
 use rocket::response::status;
 use rocket_contrib::Json;
-use super::log_db_err;
 
 const PAGE_SIZE: i64 = 10;
 
@@ -49,8 +51,8 @@ pub struct Page {
     page: i64,
 }
 
-// Todo: verify that offset and limit do not cause errors if they overshoot the total.
-// Note: `offset` usage here has bad performance on large page numbers
+// Todo: verify that offset and limit do not cause errors if they overshoot the
+// total. Note: `offset` usage here has bad performance on large page numbers
 /// Gets a page of global entries.
 /// If an unexpected error occurs, fails with an `InternalServiceError` status.
 #[get("/entry?<page>")]

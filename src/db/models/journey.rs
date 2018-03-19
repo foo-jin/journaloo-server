@@ -1,6 +1,6 @@
 use chrono::NaiveDateTime;
-use db::schema::journeys;
 use db::models::user::UserInfo;
+use db::schema::journeys;
 
 #[derive(Queryable, Identifiable, Associations, Debug)]
 #[belongs_to(UserInfo, foreign_key = "user_id")]

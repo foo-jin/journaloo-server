@@ -59,8 +59,8 @@ pub fn archive(entry_id: i32, conn: &PgConnection) -> diesel::QueryResult<()> {
 
 #[cfg(test)]
 mod tests {
-    use db;
     use super::*;
+    use db;
 
     #[test]
     fn create_entry() {

@@ -3,10 +3,10 @@ use db::schema::users;
 use diesel;
 use diesel::prelude::*;
 use jwt::{decode, Validation};
-use rocket::http::Status;
 use rocket::Outcome;
-use rocket::request::{self, FromRequest};
 use rocket::Request;
+use rocket::http::Status;
+use rocket::request::{self, FromRequest};
 
 #[derive(Queryable, Debug)]
 pub struct User {
@@ -77,10 +77,10 @@ pub fn update(
 
 /// Deletes a user, and its owned journeys and entries
 pub fn delete(user: UserInfo, conn: &PgConnection) -> diesel::QueryResult<()> {
-    use db::schema::users::dsl::*;
-    use db::schema::journeys::dsl::*;
-    use db::models::journey::Journey;
     use db::models::entry::Entry;
+    use db::models::journey::Journey;
+    use db::schema::journeys::dsl::*;
+    use db::schema::users::dsl::*;
 
     let mut del_journeys = 0;
     let mut del_entries = 0;
@@ -150,9 +150,9 @@ impl From<User> for UserInfo {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use db::get_test_conn;
     use diesel::prelude::*;
-    use super::*;
 
     #[test]
     fn create_user() {

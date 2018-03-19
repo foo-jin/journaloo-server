@@ -7,10 +7,10 @@ use jwt::{self, Header};
 //use lettre::smtp::authentication::Mechanism;
 //use lettre::smtp::SUBMISSION_PORT;
 //use lettre_email::EmailBuilder;
-use rocket::http::Status;
-use rocket_contrib::Json;
 use super::{log_db_err, log_err};
+use rocket::http::Status;
 use rocket::response::status;
+use rocket_contrib::Json;
 
 /// Registers a new user.
 /// If the username or email is taken, fails with a `BadRequest` status.
