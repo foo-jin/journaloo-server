@@ -19,6 +19,7 @@ extern crate log;
 extern crate pretty_env_logger as env_logger;
 extern crate r2d2;
 extern crate r2d2_diesel;
+extern crate rand;
 extern crate rocket;
 extern crate rocket_contrib;
 extern crate serde;
