@@ -2,6 +2,7 @@
 #![plugin(rocket_codegen)]
 #![feature(custom_attribute)]
 #![feature(custom_derive)]
+#![cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
 
 extern crate bcrypt;
 extern crate chrono;
@@ -30,12 +31,12 @@ use endpoints::*;
 use rocket::Rocket;
 
 pub mod db;
-mod endpoints;
+pub mod endpoints;
 
 pub fn rocket() -> Rocket {
     dotenv::dotenv().ok();
 
-    env_logger::init();
+    let _ = env_logger::try_init();
     let pool = init_pool();
 
     // Configure our server, and mount all routes.  We don't "launch" the server
@@ -48,7 +49,8 @@ pub fn rocket() -> Rocket {
             user::update,
             user::delete,
             user::login,
-            user::get_by_id
+            user::get_by_id,
+            user::reset_password,
         ],
     )
 }

@@ -70,6 +70,7 @@ fn get_test_conn() -> DbConn {
     }
 
     let conn = test_pool.get().expect("failed to get db connection");
-    conn.begin_test_transaction().expect("failed to initialize test transaction");
+    conn.begin_test_transaction()
+        .expect("failed to initialize test transaction");
     DbConn(conn)
 }
