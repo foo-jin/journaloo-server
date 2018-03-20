@@ -38,10 +38,7 @@ pub fn signup(user: Json<NewUser>, conn: DbConn) -> Result<status::Created<Strin
         .first::<User>(&*conn)
     {
         Err(Error::NotFound) => (),
-        Ok(v) => {
-            debug!("duplicate user found: {:?}", v);
-            return Err(status::Custom(Status::BadRequest, ()));
-        }
+        Ok(_v) => return Err(status::Custom(Status::BadRequest, ())),
         Err(e) => return Err(log_err(e)),
     }
 
@@ -52,7 +49,6 @@ pub fn signup(user: Json<NewUser>, conn: DbConn) -> Result<status::Created<Strin
 }
 
 /// Updates an existing user.
-/// If the user does not exist, fails with a `NotFound` status.
 /// If unexpected errors occur, fails with an `InternalServiceError` status.
 #[put("/user", format = "application/json", data = "<updated_user>")]
 pub fn update(
@@ -73,7 +69,7 @@ pub fn update(
 /// If an unexpected errors occur, fails with an `InternalServiceError` status.
 #[delete("/user")]
 pub fn delete(user: UserInfo, conn: DbConn) -> Result<(), ErrStatus> {
-    user::delete(user, &*conn).map_err(log_err)
+    user::delete(user, &*conn).map_err(log_db_err)
 }
 
 /// Login details of a user
@@ -110,7 +106,6 @@ pub fn login(user_login: Json<UserLogin>, conn: DbConn) -> Result<String, ErrSta
 /// If the email does not belong to an existing user, fail with `NotFound` status.
 /// If an unexpected errors occur, fails with an `InternalServiceError` status.
 #[put("/user/reset_password/<email_address>")]
-#[allow(unused_variables)]
 pub fn reset_password(
     email_address: String,
     conn: DbConn,

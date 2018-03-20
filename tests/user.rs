@@ -90,11 +90,14 @@ fn get() {
 
     assert_eq!(response.status(), Status::Ok);
     assert_eq!(response.content_type(), Some(ContentType::JSON));
+
     let result: UserInfo = serde_json::from_str(&response.body_string().expect("no body found"))
         .expect("failed to deserialize");
+
     assert_eq!(result, *JD_INFO);
 
     response = client.get(format!("user/{}", JD_INFO.id - 1)).dispatch();
+
     assert_eq!(response.status(), Status::NotFound);
 }
 
@@ -110,11 +113,29 @@ fn login() {
     assert_eq!(response.status(), Status::Ok);
     assert_eq!(response.content_type(), Some(ContentType::Plain));
 
-    let token = jwt::decode::<UserInfo>(
-        &response.body_string().expect("no body found"),
-        SECRET.as_bytes(),
-        &jwt::Validation::default(),
-    ).expect("failed to decode auth token");
+    let body = response.body_string().expect("no body found");
+    let token = jwt::decode::<UserInfo>(&body, SECRET.as_bytes(), &jwt::Validation::default())
+        .expect("failed to decode auth token");
 
     assert_eq!(token.claims, *JD_INFO);
+
+    let login = UserLogin {
+        username: "jondoe",
+        password: "aaaa",
+    };
+
+    response = client
+        .post("/user/login")
+        .header(ContentType::JSON)
+        .body(serde_json::to_string(&login).expect("failed to serialize"))
+        .dispatch();
+
+    assert_eq!(response.status(), Status::Unauthorized)
+}
+
+#[test]
+fn reset_password_errors() {
+    let response = client.put("/user/reset_password/notjon@doe.com").dispatch();
+
+    assert_eq!(response.status(), Status::NotFound);
 }

@@ -27,7 +27,7 @@ extern crate serde;
 extern crate serde_derive;
 
 use db::init_pool;
-use endpoints::*;
+use endpoints::{entry, user};
 use rocket::Rocket;
 use std::env;
 
