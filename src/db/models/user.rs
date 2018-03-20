@@ -152,7 +152,6 @@ impl From<User> for UserInfo {
 mod tests {
     use super::*;
     use db::get_test_conn;
-    use diesel::prelude::*;
 
     #[test]
     fn create_user() {

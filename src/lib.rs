@@ -31,8 +31,8 @@ use endpoints::*;
 use rocket::Rocket;
 use std::env;
 
-pub mod db;
-pub mod endpoints;
+mod db;
+mod endpoints;
 
 lazy_static!(
     static ref SECRET: String = env::var("JWT_SECRET").expect("SECRET must be set");

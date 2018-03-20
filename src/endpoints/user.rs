@@ -17,7 +17,7 @@ use lettre::smtp::authentication::{Credentials, Mechanism};
 use lettre::smtp::extension::ClientId;
 use lettre_email::EmailBuilder;
 
-use super::{log_db_err, log_err};
+use super::{log_db_err, log_err, ErrStatus};
 use db::DbConn;
 use db::models::user::{self, NewUser, User, UserInfo};
 
@@ -25,7 +25,7 @@ use db::models::user::{self, NewUser, User, UserInfo};
 /// If the username or email is taken, fails with a `BadRequest` status.
 /// If an unexpected error occurs, fails with an `InternalServiceError` status.
 #[post("/user", format = "application/json", data = "<user>")]
-pub fn signup(user: Json<NewUser>, conn: DbConn) -> Result<status::Created<String>, Status> {
+pub fn signup(user: Json<NewUser>, conn: DbConn) -> Result<status::Created<String>, ErrStatus> {
     use db::schema::users::dsl::*;
     use diesel::result::Error;
 
@@ -40,7 +40,7 @@ pub fn signup(user: Json<NewUser>, conn: DbConn) -> Result<status::Created<Strin
         Err(Error::NotFound) => (),
         Ok(v) => {
             debug!("duplicate user found: {:?}", v);
-            return Err(Status::BadRequest);
+            return Err(status::Custom(Status::BadRequest, ()));
         }
         Err(e) => return Err(log_err(e)),
     }
@@ -52,17 +52,18 @@ pub fn signup(user: Json<NewUser>, conn: DbConn) -> Result<status::Created<Strin
 }
 
 /// Updates an existing user.
+/// If the user does not exist, fails with a `NotFound` status.
 /// If unexpected errors occur, fails with an `InternalServiceError` status.
 #[put("/user", format = "application/json", data = "<updated_user>")]
 pub fn update(
     old_user: UserInfo,
     updated_user: Json<NewUser>,
     conn: DbConn,
-) -> Result<String, Status> {
+) -> Result<String, ErrStatus> {
     let mut updated_user = updated_user.into_inner();
     hash_password(&mut updated_user).map_err(log_err)?;
 
-    let user_info = user::update(&old_user, &updated_user, &*conn).map_err(log_err)?;
+    let user_info = user::update(&old_user, &updated_user, &*conn).map_err(log_db_err)?;
     let token = issue_token(&user_info).map_err(log_err)?;
 
     Ok(token)
@@ -71,12 +72,12 @@ pub fn update(
 /// Deletes a user, along with all its journeys and entries.
 /// If an unexpected errors occur, fails with an `InternalServiceError` status.
 #[delete("/user")]
-pub fn delete(user: UserInfo, conn: DbConn) -> Result<(), Status> {
+pub fn delete(user: UserInfo, conn: DbConn) -> Result<(), ErrStatus> {
     user::delete(user, &*conn).map_err(log_err)
 }
 
 /// Login details of a user
-#[derive(Serialize, Deserialize)]
+#[derive(Deserialize)]
 pub struct UserLogin {
     pub username: String,
     pub password: String,
@@ -87,7 +88,7 @@ pub struct UserLogin {
 /// If the credentials do not match, fails with an `Unauthorized` status.
 /// If an unexpected errors occur, fails with an `InternalServiceError` status.
 #[post("/user/login", format = "application/json", data = "<user_login>")]
-pub fn login(user_login: Json<UserLogin>, conn: DbConn) -> Result<String, Status> {
+pub fn login(user_login: Json<UserLogin>, conn: DbConn) -> Result<String, ErrStatus> {
     use db::schema::users::dsl::*;
 
     let user = users
@@ -97,7 +98,7 @@ pub fn login(user_login: Json<UserLogin>, conn: DbConn) -> Result<String, Status
 
     if !bcrypt::verify(&user_login.password, &user.password).map_err(log_err)? {
         debug!("couldn't verify password");
-        return Err(Status::Unauthorized);
+        return Err(status::Custom(Status::Unauthorized, ()));
     }
 
     let token = issue_token(&user.into()).map_err(log_err)?;
@@ -110,7 +111,10 @@ pub fn login(user_login: Json<UserLogin>, conn: DbConn) -> Result<String, Status
 /// If an unexpected errors occur, fails with an `InternalServiceError` status.
 #[put("/user/reset_password/<email_address>")]
 #[allow(unused_variables)]
-pub fn reset_password(email_address: String, conn: DbConn) -> Result<status::Accepted<()>, Status> {
+pub fn reset_password(
+    email_address: String,
+    conn: DbConn,
+) -> Result<status::Accepted<()>, ErrStatus> {
     use db::schema::users::dsl::*;
 
     const RESET_DURATION: u32 = 5;
@@ -175,7 +179,7 @@ pub fn reset_password(email_address: String, conn: DbConn) -> Result<status::Acc
 /// If the user does not exist, fails with a `NotFound` status.
 /// If an unexpected errors occur, fails with an `InternalServiceError` status.
 #[get("/user/<user_id>")]
-pub fn get_by_id(user_id: i32, conn: DbConn) -> Result<Json<UserInfo>, Status> {
+pub fn get_by_id(user_id: i32, conn: DbConn) -> Result<Json<UserInfo>, ErrStatus> {
     use db::schema::users::dsl::*;
 
     let user = users

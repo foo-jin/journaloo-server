@@ -1,4 +1,4 @@
-use super::log_db_err;
+use super::{log_db_err, ErrStatus};
 
 use db::DbConn;
 use db::models::entry::{self, Entry, NewEntry};
@@ -21,7 +21,7 @@ pub fn create(
     new_entry: Json<NewEntry>,
     _user: UserInfo,
     conn: DbConn,
-) -> Result<status::Created<Json<Entry>>, Status> {
+) -> Result<status::Created<Json<Entry>>, ErrStatus> {
     use db::schema::journeys::dsl::*;
 
     let journey = journeys
@@ -30,7 +30,7 @@ pub fn create(
         .map_err(log_db_err)?;
 
     if journey.end_date.is_some() {
-        return Err(Status::BadRequest);
+        return Err(status::Custom(Status::BadRequest, ()));
     }
 
     let entry = entry::create(&new_entry, &*conn).map_err(log_db_err)?;
@@ -42,7 +42,7 @@ pub fn create(
 /// If the entry does not exist, fails with a `NotFound` status.
 /// If an unexpected error occurs, fails with an `InternalServiceError` status.
 #[delete("/entry/<entry_id>")]
-pub fn delete(entry_id: i32, conn: DbConn) -> Result<(), Status> {
+pub fn delete(entry_id: i32, conn: DbConn) -> Result<(), ErrStatus> {
     entry::archive(entry_id, &*conn).map_err(log_db_err)
 }
 
@@ -56,7 +56,7 @@ pub struct Page {
 /// Gets a page of global entries.
 /// If an unexpected error occurs, fails with an `InternalServiceError` status.
 #[get("/entry?<page>")]
-pub fn get_all(page: Page, conn: DbConn) -> Result<Json<Vec<Entry>>, Status> {
+pub fn get_all(page: Page, conn: DbConn) -> Result<Json<Vec<Entry>>, ErrStatus> {
     use db::schema::entries::dsl::*;
     let page = page.page;
 
@@ -74,7 +74,7 @@ pub fn get_all(page: Page, conn: DbConn) -> Result<Json<Vec<Entry>>, Status> {
 /// If the journey does not exist, fails with a `NotFound` status.
 /// If an unexpected error occurs, fails with an `InteralServiceError` status.
 #[get("/entry/<jid>?<page>")]
-pub fn get_by_journey(jid: i32, page: Page, conn: DbConn) -> Result<Json<Vec<Entry>>, Status> {
+pub fn get_by_journey(jid: i32, page: Page, conn: DbConn) -> Result<Json<Vec<Entry>>, ErrStatus> {
     use db::schema::entries::dsl::*;
     let page = page.page;
 
