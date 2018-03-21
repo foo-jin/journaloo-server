@@ -68,15 +68,3 @@ pub fn rocket() -> Rocket {
 fn index() -> &'static str {
     "Hello, world!"
 }
-
-//#[error(400)]
-//fn debug_badrequests(req: &rocket::Request) {
-//    debug!("Received a bad request:\n{:?}", req);
-//}
-//
-//#[error(404)]
-//fn not_found(req: &rocket::Request) -> content::Html<String> {
-//    content::Html(format!("<p>Sorry, but '{}' is not a valid path!</p>
-//            <p>Try visiting /hello/&lt;name&gt;/&lt;age&gt; instead.</p>",
-//                          req.uri()))
-//}
