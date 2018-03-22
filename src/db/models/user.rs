@@ -16,6 +16,8 @@ use rocket_contrib::Json;
 
 use db::schema::users;
 
+use db::schema::users;
+
 #[derive(Queryable, Debug)]
 pub struct User {
     pub id: i32,
