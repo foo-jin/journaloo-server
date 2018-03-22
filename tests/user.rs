@@ -69,6 +69,9 @@ fn check_signup(user: &NewUser) {
 }
 
 #[test]
+fn signup() {}
+
+#[test]
 fn signup_errors() {
     let mut user = NewUser {
         username: "jondoe",

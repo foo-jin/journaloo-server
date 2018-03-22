@@ -1,12 +1,20 @@
+use bcrypt;
 use chrono::NaiveDateTime;
-use db::schema::users;
 use diesel;
 use diesel::prelude::*;
+use failure;
 use jwt::{decode, Validation};
+
+use rocket::Data;
 use rocket::Outcome;
 use rocket::Request;
+use rocket::data::{self, FromData};
 use rocket::http::Status;
+use rocket::outcome::IntoOutcome;
 use rocket::request::{self, FromRequest};
+use rocket_contrib::Json;
+
+use db::schema::users;
 
 #[derive(Queryable, Debug)]
 pub struct User {
@@ -128,6 +136,30 @@ impl<'a, 'r> FromRequest<'a, 'r> for UserInfo {
 
         debug!("Authorized request, username = {}", token.claims.username);
         Outcome::Success(token.claims)
+    }
+}
+
+/// Hash and salt a password.
+fn hash_password(mut user: NewUser) -> Result<NewUser, bcrypt::BcryptError> {
+    debug!("hashing password");
+    user.password = bcrypt::hash(&user.password, bcrypt::DEFAULT_COST)?;
+    Ok(user)
+}
+
+impl FromData for NewUser {
+    type Error = failure::Error;
+
+    /// Request guard for user creation. Will return errors if either the json is invalid
+    /// or if the password failed to hash.
+    fn from_data(request: &Request, data: Data) -> data::Outcome<Self, Self::Error> {
+        let json = Json::<NewUser>::from_data(request, data)
+            .success_or_else(|| failure::err_msg("failed to deserialize json"))
+            .into_outcome(Status::BadRequest)?;
+
+        let user = json.into_inner();
+        hash_password(user)
+            .map_err(|e| format_err!("failed to hash password ({:?})", e))
+            .into_outcome(Status::InternalServerError)
     }
 }
 

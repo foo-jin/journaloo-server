@@ -9,6 +9,8 @@ extern crate chrono;
 #[macro_use]
 extern crate diesel;
 extern crate dotenv;
+#[macro_use]
+extern crate failure;
 extern crate jsonwebtoken as jwt;
 #[macro_use]
 extern crate lazy_static;
@@ -25,10 +27,12 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 
-use db::init_pool;
+use std::env;
+
 use endpoints::{entry, user};
 use rocket::Rocket;
-use std::env;
+
+use db::init_pool;
 
 mod db;
 mod endpoints;

@@ -9,7 +9,6 @@ use rand::os::OsRng;
 use rocket::http::Status;
 use rocket::response::status;
 use rocket_contrib::Json;
-
 use sendgrid::mail::Mail;
 use sendgrid::sg_client::SGClient;
 
@@ -21,16 +20,13 @@ use db::models::user::{self, NewUser, User, UserInfo};
 /// If the username or email is taken, fails with a `BadRequest` status.
 /// If an unexpected error occurs, fails with an `InternalServiceError` status.
 #[post("/user", format = "application/json", data = "<user>")]
-pub fn signup(user: Json<NewUser>, conn: DbConn) -> Result<status::Created<String>, ErrStatus> {
-    use db::schema::users::dsl::*;
+pub fn signup(user: NewUser, conn: DbConn) -> Result<status::Created<String>, ErrStatus> {
+    use db::schema::users;
     use diesel::result::Error;
 
-    let mut user = user.into_inner();
-    hash_password(&mut user).map_err(log_err)?;
-
-    match users
-        .filter(username.eq(&user.username))
-        .or_filter(email.eq(&user.email))
+    match users::table
+        .filter(users::username.eq(&user.username))
+        .or_filter(users::email.eq(&user.email))
         .first::<User>(&*conn)
     {
         Err(Error::NotFound) => (),
@@ -49,12 +45,9 @@ pub fn signup(user: Json<NewUser>, conn: DbConn) -> Result<status::Created<Strin
 #[put("/user", format = "application/json", data = "<updated_user>")]
 pub fn update(
     old_user: UserInfo,
-    updated_user: Json<NewUser>,
+    updated_user: NewUser,
     conn: DbConn,
 ) -> Result<String, ErrStatus> {
-    let mut updated_user = updated_user.into_inner();
-    hash_password(&mut updated_user).map_err(log_err)?;
-
     let user_info = user::update(&old_user, &updated_user, &*conn).map_err(log_db_err)?;
     let token = issue_token(&user_info).map_err(log_err)?;
 
@@ -81,10 +74,10 @@ pub struct UserLogin {
 /// If an unexpected errors occur, fails with an `InternalServiceError` status.
 #[post("/user/login", format = "application/json", data = "<user_login>")]
 pub fn login(user_login: Json<UserLogin>, conn: DbConn) -> Result<String, ErrStatus> {
-    use db::schema::users::dsl::*;
+    use db::schema::users;
 
-    let user = users
-        .filter(username.eq(&user_login.username))
+    let user = users::table
+        .filter(users::username.eq(&user_login.username))
         .first::<User>(&*conn)
         .map_err(log_db_err)?;
 
@@ -152,21 +145,14 @@ pub fn reset_password(
 /// If an unexpected errors occur, fails with an `InternalServiceError` status.
 #[get("/user/<user_id>")]
 pub fn get_by_id(user_id: i32, conn: DbConn) -> Result<Json<UserInfo>, ErrStatus> {
-    use db::schema::users::dsl::*;
+    use db::schema::users;
 
-    let user = users
+    let user = users::table
         .find(user_id)
         .first::<User>(&*conn)
         .map_err(log_db_err)?;
 
     Ok(Json(user.into()))
-}
-
-/// Hash and salt a password.
-fn hash_password(user: &mut NewUser) -> Result<(), bcrypt::BcryptError> {
-    debug!("hashing password");
-    user.password = bcrypt::hash(&user.password, DEFAULT_COST)?;
-    Ok(())
 }
 
 /// Create an auth token containing a user's account details.

@@ -1,3 +1,6 @@
+use std::env;
+use std::ops::Deref;
+
 use diesel::pg::PgConnection;
 use dotenv::dotenv;
 use r2d2;
@@ -7,8 +10,6 @@ use rocket::Request;
 use rocket::State;
 use rocket::http::Status;
 use rocket::request::{self, FromRequest};
-use std::env;
-use std::ops::Deref;
 
 pub mod schema;
 pub mod models;
