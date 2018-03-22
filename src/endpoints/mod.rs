@@ -1,7 +1,8 @@
+use std::fmt::Debug;
+
 use diesel::result::Error;
 use rocket::http::Status;
 use rocket::response::status;
-use std::fmt::Debug;
 
 pub mod user;
 pub mod journey;

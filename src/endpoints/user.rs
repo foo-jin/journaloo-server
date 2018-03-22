@@ -9,7 +9,6 @@ use rand::os::OsRng;
 use rocket::http::Status;
 use rocket::response::status;
 use rocket_contrib::Json;
-
 use sendgrid::mail::Mail;
 use sendgrid::sg_client::SGClient;
 
@@ -22,15 +21,15 @@ use db::models::user::{self, NewUser, User, UserInfo};
 /// If an unexpected error occurs, fails with an `InternalServiceError` status.
 #[post("/user", format = "application/json", data = "<user>")]
 pub fn signup(user: Json<NewUser>, conn: DbConn) -> Result<status::Created<String>, ErrStatus> {
-    use db::schema::users::dsl::*;
+    use db::schema::users;
     use diesel::result::Error;
 
     let mut user = user.into_inner();
     hash_password(&mut user).map_err(log_err)?;
 
-    match users
-        .filter(username.eq(&user.username))
-        .or_filter(email.eq(&user.email))
+    match users::table
+        .filter(users::username.eq(&user.username))
+        .or_filter(users::email.eq(&user.email))
         .first::<User>(&*conn)
     {
         Err(Error::NotFound) => (),
@@ -81,10 +80,10 @@ pub struct UserLogin {
 /// If an unexpected errors occur, fails with an `InternalServiceError` status.
 #[post("/user/login", format = "application/json", data = "<user_login>")]
 pub fn login(user_login: Json<UserLogin>, conn: DbConn) -> Result<String, ErrStatus> {
-    use db::schema::users::dsl::*;
+    use db::schema::users;
 
-    let user = users
-        .filter(username.eq(&user_login.username))
+    let user = users::table
+        .filter(users::username.eq(&user_login.username))
         .first::<User>(&*conn)
         .map_err(log_db_err)?;
 
@@ -152,9 +151,9 @@ pub fn reset_password(
 /// If an unexpected errors occur, fails with an `InternalServiceError` status.
 #[get("/user/<user_id>")]
 pub fn get_by_id(user_id: i32, conn: DbConn) -> Result<Json<UserInfo>, ErrStatus> {
-    use db::schema::users::dsl::*;
+    use db::schema::users;
 
-    let user = users
+    let user = users::table
         .find(user_id)
         .first::<User>(&*conn)
         .map_err(log_db_err)?;

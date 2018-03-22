@@ -1,8 +1,9 @@
 use chrono::NaiveDateTime;
-use db::models::journey::Journey;
-use db::schema::entries;
 use diesel;
 use diesel::prelude::*;
+
+use db::models::journey::Journey;
+use db::schema::entries;
 
 #[derive(Queryable, Identifiable, Associations, Serialize, PartialEq, Debug)]
 #[table_name = "entries"]

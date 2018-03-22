@@ -1,5 +1,4 @@
 use chrono::NaiveDateTime;
-use db::schema::users;
 use diesel;
 use diesel::prelude::*;
 use jwt::{decode, Validation};
@@ -7,6 +6,8 @@ use rocket::Outcome;
 use rocket::Request;
 use rocket::http::Status;
 use rocket::request::{self, FromRequest};
+
+use db::schema::users;
 
 #[derive(Queryable, Debug)]
 pub struct User {

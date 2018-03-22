@@ -1,4 +1,5 @@
 use chrono::NaiveDateTime;
+
 use db::models::user::UserInfo;
 use db::schema::journeys;
 
