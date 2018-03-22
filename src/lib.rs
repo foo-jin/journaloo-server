@@ -12,8 +12,6 @@ extern crate dotenv;
 extern crate jsonwebtoken as jwt;
 #[macro_use]
 extern crate lazy_static;
-extern crate lettre;
-extern crate lettre_email;
 #[macro_use]
 extern crate log;
 extern crate pretty_env_logger as env_logger;
@@ -22,6 +20,7 @@ extern crate r2d2_diesel;
 extern crate rand;
 extern crate rocket;
 extern crate rocket_contrib;
+extern crate sendgrid;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
