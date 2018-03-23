@@ -15,6 +15,8 @@ use sendgrid::sg_client::SGClient;
 use super::{log_db_err, log_err, ErrStatus};
 use db::DbConn;
 use db::models::user::{self, NewUser, User, UserInfo};
+use endpoints::PAGE_SIZE;
+use endpoints::QueryString;
 
 /// Registers a new user.
 /// If the username or email is taken, fails with a `BadRequest` status.
@@ -95,7 +97,7 @@ pub fn login(user_login: Json<UserLogin>, conn: DbConn) -> Result<String, ErrSta
 /// Only confirmed to work with gmail accounts.
 /// If the email does not belong to an existing user, fail with `NotFound` status.
 /// If an unexpected errors occur, fails with an `InternalServiceError` status.
-#[put("/user/reset_password/<email_address>")]
+#[put("/user/<email_address>/reset")]
 pub fn reset_password(
     email_address: String,
     conn: DbConn,
@@ -153,6 +155,25 @@ pub fn get_by_id(user_id: i32, conn: DbConn) -> Result<Json<UserInfo>, ErrStatus
         .map_err(log_db_err)?;
 
     Ok(Json(user.into()))
+}
+
+// Note: `offset` usage here has bad performance on large page numbers
+/// Gets a page of global users.
+/// If an unexpected error occurs, fails with an `InternalServiceError` status.
+#[get("/user?<query>")]
+pub fn get_all(query: QueryString, conn: DbConn) -> Result<Json<Vec<UserInfo>>, ErrStatus> {
+    use db::schema::users;
+    let page = query.page.0;
+
+    let result = users::table
+        .offset(page * PAGE_SIZE)
+        .limit(PAGE_SIZE)
+        .get_results::<User>(&*conn)
+        .map_err(log_db_err)?;
+
+    let result = result.into_iter().map(Into::into).collect();
+
+    Ok(Json(result))
 }
 
 /// Create an auth token containing a user's account details.

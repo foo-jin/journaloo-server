@@ -8,6 +8,8 @@ use db::DbConn;
 use db::models::entry::{self, Entry, NewEntry};
 use db::models::journey::Journey;
 use db::models::user::UserInfo;
+use endpoints::PAGE_SIZE;
+use endpoints::QueryString;
 
 /// Creates a new entry.
 /// If the journey does not exist, fails with a `NotFound` status.
@@ -43,21 +45,13 @@ pub fn delete(entry_id: i32, conn: DbConn) -> Result<(), ErrStatus> {
     entry::archive(entry_id, &*conn).map_err(log_db_err)
 }
 
-#[derive(FromForm)]
-pub struct Page {
-    page: i64,
-}
-
-const PAGE_SIZE: i64 = 10;
-
-// Todo: verify that offset and limit do not cause errors if they overshoot the
-// total. Note: `offset` usage here has bad performance on large page numbers
+// Note: `offset` usage here has bad performance on large page numbers
 /// Gets a page of global entries.
 /// If an unexpected error occurs, fails with an `InternalServiceError` status.
-#[get("/entry?<page>")]
-pub fn get_all(page: Page, conn: DbConn) -> Result<Json<Vec<Entry>>, ErrStatus> {
+#[get("/entry?<query>")]
+pub fn get_all(query: QueryString, conn: DbConn) -> Result<Json<Vec<Entry>>, ErrStatus> {
     use db::schema::entries;
-    let page = page.page;
+    let page = query.page.0;
 
     let result = entries::table
         .order(entries::created.desc())
@@ -72,10 +66,14 @@ pub fn get_all(page: Page, conn: DbConn) -> Result<Json<Vec<Entry>>, ErrStatus> 
 /// Gets a page of a specific journey's entries.
 /// If the journey does not exist, fails with a `NotFound` status.
 /// If an unexpected error occurs, fails with an `InteralServiceError` status.
-#[get("/entry/<jid>?<page>")]
-pub fn get_by_journey(jid: i32, page: Page, conn: DbConn) -> Result<Json<Vec<Entry>>, ErrStatus> {
+#[get("/entry/<jid>?<query>")]
+pub fn get_by_journey(
+    jid: i32,
+    query: QueryString,
+    conn: DbConn,
+) -> Result<Json<Vec<Entry>>, ErrStatus> {
     use db::schema::entries;
-    let page = page.page;
+    let page = query.page.0;
 
     let result = entries::table
         .order(entries::created.desc())

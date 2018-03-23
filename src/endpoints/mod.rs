@@ -3,6 +3,8 @@ use std::fmt::Debug;
 use diesel::result::Error;
 use rocket::http::Status;
 use rocket::response::status;
+use rocket::request::FromFormValue;
+use rocket::http::RawStr;
 
 pub mod user;
 pub mod journey;
@@ -26,3 +28,23 @@ fn log_db_err(e: Error) -> ErrStatus {
         e => log_err(e),
     }
 }
+
+struct Page(i64);
+
+impl<'v> FromFormValue<'v> for Page {
+    type Error = &'v RawStr;
+
+    fn from_form_value(form_value: &'v RawStr) -> Result<Self, &'v RawStr> {
+        match form_value.parse::<i64>() {
+            Ok(page) if page >= 0 => Ok(Page(page)),
+            _ => Err(form_value)
+        }
+    }
+}
+
+#[derive(FromForm)]
+pub struct QueryString {
+    page: Page,
+}
+
+const PAGE_SIZE: i64 = 10;
