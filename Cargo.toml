@@ -2,6 +2,7 @@
 authors = ["frank <frank.049@hotmail.com>"]
 name = "journaloo-server"
 version = "0.1.0"
+
 [dependencies]
 dotenv = "*"
 r2d2 = "*"
@@ -19,7 +20,6 @@ pretty_env_logger = "0.2.2"
 lazy_static = "1.0.0"
 rand = "0.4.2"
 sendgrid = "0.6.2"
-failure = "0.1.1"
 
 [dependencies.diesel]
 features = ["postgres", "chrono"]

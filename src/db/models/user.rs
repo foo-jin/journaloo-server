@@ -2,7 +2,6 @@ use bcrypt;
 use chrono::NaiveDateTime;
 use diesel;
 use diesel::prelude::*;
-use failure;
 use jwt::{decode, Validation};
 
 use rocket::Data;
@@ -147,18 +146,18 @@ fn hash_password(mut user: NewUser) -> Result<NewUser, bcrypt::BcryptError> {
 }
 
 impl FromData for NewUser {
-    type Error = failure::Error;
+    type Error = ();
 
     /// Request guard for user creation. Will return errors if either the json is invalid
     /// or if the password failed to hash.
     fn from_data(request: &Request, data: Data) -> data::Outcome<Self, Self::Error> {
         let json = Json::<NewUser>::from_data(request, data)
-            .success_or_else(|| failure::err_msg("failed to deserialize json"))
+            .success_or(())
             .into_outcome(Status::BadRequest)?;
 
         let user = json.into_inner();
         hash_password(user)
-            .map_err(|e| format_err!("failed to hash password ({:?})", e))
+            .map_err(|_| ())
             .into_outcome(Status::InternalServerError)
     }
 }
