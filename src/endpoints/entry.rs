@@ -1,16 +1,15 @@
-use super::{log_db_err, ErrStatus};
-
-use db::DbConn;
-use db::models::entry::{self, Entry, NewEntry};
-use db::models::journey::Journey;
-use db::models::user::UserInfo;
-
 use diesel::prelude::*;
 use rocket::http::Status;
 use rocket::response::status;
 use rocket_contrib::Json;
 
-const PAGE_SIZE: i64 = 10;
+use super::{log_db_err, ErrStatus};
+use db::DbConn;
+use db::models::entry::{self, Entry, NewEntry};
+use db::models::journey::Journey;
+use db::models::user::UserInfo;
+use endpoints::PAGE_SIZE;
+use endpoints::QueryString;
 
 /// Creates a new entry.
 /// If the journey does not exist, fails with a `NotFound` status.
@@ -22,9 +21,9 @@ pub fn create(
     _user: UserInfo,
     conn: DbConn,
 ) -> Result<status::Created<Json<Entry>>, ErrStatus> {
-    use db::schema::journeys::dsl::*;
+    use db::schema::journeys;
 
-    let journey = journeys
+    let journey = journeys::table
         .find(new_entry.journey_id)
         .first::<Journey>(&*conn)
         .map_err(log_db_err)?;
@@ -46,24 +45,18 @@ pub fn delete(entry_id: i32, conn: DbConn) -> Result<(), ErrStatus> {
     entry::archive(entry_id, &*conn).map_err(log_db_err)
 }
 
-#[derive(FromForm)]
-pub struct Page {
-    page: i64,
-}
-
-// Todo: verify that offset and limit do not cause errors if they overshoot the
-// total. Note: `offset` usage here has bad performance on large page numbers
+// Note: `offset` usage here has bad performance on large page numbers
 /// Gets a page of global entries.
 /// If an unexpected error occurs, fails with an `InternalServiceError` status.
-#[get("/entry?<page>")]
-pub fn get_all(page: Page, conn: DbConn) -> Result<Json<Vec<Entry>>, ErrStatus> {
-    use db::schema::entries::dsl::*;
-    let page = page.page;
+#[get("/entry?<query>")]
+pub fn get_all(query: QueryString, conn: DbConn) -> Result<Json<Vec<Entry>>, ErrStatus> {
+    use db::schema::entries;
+    let page = query.page.0;
 
-    let result = entries
-        .order(created.desc())
+    let result = entries::table
+        .order(entries::created.desc())
         .offset(page * PAGE_SIZE)
-        .limit(page * (PAGE_SIZE + 1))
+        .limit(PAGE_SIZE)
         .get_results::<Entry>(&*conn)
         .map_err(log_db_err)?;
 
@@ -73,15 +66,19 @@ pub fn get_all(page: Page, conn: DbConn) -> Result<Json<Vec<Entry>>, ErrStatus> 
 /// Gets a page of a specific journey's entries.
 /// If the journey does not exist, fails with a `NotFound` status.
 /// If an unexpected error occurs, fails with an `InteralServiceError` status.
-#[get("/entry/<jid>?<page>")]
-pub fn get_by_journey(jid: i32, page: Page, conn: DbConn) -> Result<Json<Vec<Entry>>, ErrStatus> {
-    use db::schema::entries::dsl::*;
-    let page = page.page;
+#[get("/entry/<jid>?<query>")]
+pub fn get_by_journey(
+    jid: i32,
+    query: QueryString,
+    conn: DbConn,
+) -> Result<Json<Vec<Entry>>, ErrStatus> {
+    use db::schema::entries;
+    let page = query.page.0;
 
-    let result = entries
-        .order(created.desc())
-        .filter(journey_id.eq(jid))
-        .filter(archived.eq(false))
+    let result = entries::table
+        .order(entries::created.desc())
+        .filter(entries::journey_id.eq(jid))
+        .filter(entries::archived.eq(false))
         .offset(page * PAGE_SIZE)
         .limit(PAGE_SIZE)
         .get_results::<Entry>(&*conn)

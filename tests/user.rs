@@ -69,6 +69,9 @@ fn check_signup(user: &NewUser) {
 }
 
 #[test]
+fn signup() {}
+
+#[test]
 fn signup_errors() {
     let mut user = NewUser {
         username: "jondoe",
@@ -135,7 +138,17 @@ fn login() {
 
 #[test]
 fn reset_password_errors() {
-    let response = client.put("/user/reset_password/notjon@doe.com").dispatch();
+    let response = client.put("/user/asdf***@madeup.com/reset").dispatch();
 
     assert_eq!(response.status(), Status::NotFound);
+}
+
+#[test]
+fn paging_errors() {
+    let mut response = client.get("/user?page=0").dispatch();
+    let users: Vec<UserInfo> = serde_json::from_str(&response.body_string().expect("no body found")).expect("failed to deserialize");
+    users.iter().for_each(|u| println!("{:?}", u));
+
+    response = client.get("/user?page=-1").dispatch();
+    assert_eq!(response.status(), Status::NotFound)
 }

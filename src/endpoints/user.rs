@@ -9,32 +9,26 @@ use rand::os::OsRng;
 use rocket::http::Status;
 use rocket::response::status;
 use rocket_contrib::Json;
-
-use lettre::EmailTransport;
-use lettre::smtp::{ClientSecurity, ConnectionReuseParameters, SmtpTransportBuilder,
-                   SUBMISSION_PORT};
-use lettre::smtp::authentication::{Credentials, Mechanism};
-use lettre::smtp::extension::ClientId;
-use lettre_email::EmailBuilder;
+use sendgrid::mail::Mail;
+use sendgrid::sg_client::SGClient;
 
 use super::{log_db_err, log_err, ErrStatus};
 use db::DbConn;
 use db::models::user::{self, NewUser, User, UserInfo};
+use endpoints::PAGE_SIZE;
+use endpoints::QueryString;
 
 /// Registers a new user.
 /// If the username or email is taken, fails with a `BadRequest` status.
 /// If an unexpected error occurs, fails with an `InternalServiceError` status.
 #[post("/user", format = "application/json", data = "<user>")]
-pub fn signup(user: Json<NewUser>, conn: DbConn) -> Result<status::Created<String>, ErrStatus> {
-    use db::schema::users::dsl::*;
+pub fn signup(user: NewUser, conn: DbConn) -> Result<status::Created<String>, ErrStatus> {
+    use db::schema::users;
     use diesel::result::Error;
 
-    let mut user = user.into_inner();
-    hash_password(&mut user).map_err(log_err)?;
-
-    match users
-        .filter(username.eq(&user.username))
-        .or_filter(email.eq(&user.email))
+    match users::table
+        .filter(users::username.eq(&user.username))
+        .or_filter(users::email.eq(&user.email))
         .first::<User>(&*conn)
     {
         Err(Error::NotFound) => (),
@@ -53,12 +47,9 @@ pub fn signup(user: Json<NewUser>, conn: DbConn) -> Result<status::Created<Strin
 #[put("/user", format = "application/json", data = "<updated_user>")]
 pub fn update(
     old_user: UserInfo,
-    updated_user: Json<NewUser>,
+    updated_user: NewUser,
     conn: DbConn,
 ) -> Result<String, ErrStatus> {
-    let mut updated_user = updated_user.into_inner();
-    hash_password(&mut updated_user).map_err(log_err)?;
-
     let user_info = user::update(&old_user, &updated_user, &*conn).map_err(log_db_err)?;
     let token = issue_token(&user_info).map_err(log_err)?;
 
@@ -85,10 +76,10 @@ pub struct UserLogin {
 /// If an unexpected errors occur, fails with an `InternalServiceError` status.
 #[post("/user/login", format = "application/json", data = "<user_login>")]
 pub fn login(user_login: Json<UserLogin>, conn: DbConn) -> Result<String, ErrStatus> {
-    use db::schema::users::dsl::*;
+    use db::schema::users;
 
-    let user = users
-        .filter(username.eq(&user_login.username))
+    let user = users::table
+        .filter(users::username.eq(&user_login.username))
         .first::<User>(&*conn)
         .map_err(log_db_err)?;
 
@@ -103,31 +94,26 @@ pub fn login(user_login: Json<UserLogin>, conn: DbConn) -> Result<String, ErrSta
 }
 
 /// Reset a user's password.
+/// Only confirmed to work with gmail accounts.
 /// If the email does not belong to an existing user, fail with `NotFound` status.
 /// If an unexpected errors occur, fails with an `InternalServiceError` status.
-#[put("/user/reset_password/<email_address>")]
+#[put("/user/<email_address>/reset")]
 pub fn reset_password(
     email_address: String,
     conn: DbConn,
 ) -> Result<status::Accepted<()>, ErrStatus> {
-    use db::schema::users::dsl::*;
+    use db::schema::users;
 
     const RESET_DURATION: u32 = 5;
 
     lazy_static! {
-        static ref MAILGUN_NAME: String = {
-            env::var("MAILGUN_NAME").expect("MAILGUN_NAME must be set")
-        };
-        static ref MAILGUN_DOMAIN: String = {
-            env::var("MAILGUN_DOMAIN").expect("MAILGUN_DOMAIN must be set")
-        };
-        static ref MAILGUN_PASSWORD: String = {
-            env::var("MAILGUN_PASSWORD").expect("MAILGUN_PASSWORD must be set")
+        static ref API_KEY: String = {
+            env::var("SENDGRID_API_KEY").expect("SENDGRID_API_KEY must be set")
         };
     }
 
-    let user = users
-        .filter(email.eq(&email_address))
+    let user = users::table
+        .filter(users::email.eq(&email_address))
         .first::<User>(&*conn)
         .map_err(log_db_err)?;
 
@@ -135,35 +121,21 @@ pub fn reset_password(
     let mut new_pass = rand.gen_ascii_chars().take(50).collect::<String>();
     new_pass = bcrypt::hash(&new_pass, DEFAULT_COST).map_err(log_err)?;
 
-    let send_email = EmailBuilder::new()
-        .to(email_address)
-        .from("traveloo@example.com")
-        .subject("Password reset")
-        .text(format!(
-            "Your password has been reset. You can use the following code to log in during the \
-             next {} hours. After that you will have to request another password reset.\n Code: {}",
-            RESET_DURATION, new_pass
-        ))
-        .build()
-        .unwrap();
+    let mut email = Mail::new();
+    email.add_to(email_address);
+    email.add_from("password@journaloo.com");
+    email.add_from_name("journaloo dev team");
+    email.add_subject("Password reset");
+    email.add_text(format!(
+        "Your password has been reset. You can use the following code to log in during the next \
+         {} hours. After that you will have to request another password reset.\n Code: {}",
+        RESET_DURATION, new_pass
+    ));
 
-    let mut mailer =
-        SmtpTransportBuilder::new(("smtp.mailgun.org", SUBMISSION_PORT), ClientSecurity::None)
-            .map_err(log_err)?
-            .hello_name(ClientId::new(MAILGUN_DOMAIN.to_string()))
-            .credentials(Credentials::new(
-                MAILGUN_NAME.to_string(),
-                MAILGUN_PASSWORD.to_string(),
-            ))
-            .smtp_utf8(true)
-            .authentication_mechanism(Mechanism::Plain)
-            .connection_reuse(ConnectionReuseParameters::ReuseUnlimited)
-            .build();
+    SGClient::new(API_KEY.clone()).send(email).map_err(log_err)?;
 
-    mailer.send(&send_email).map_err(log_err)?;
-
-    diesel::update(users.find(user.id))
-        .set(password.eq(new_pass))
+    diesel::update(users::table.find(user.id))
+        .set(users::password.eq(new_pass))
         .execute(&*conn)
         .map_err(log_db_err)?;
 
@@ -175,9 +147,9 @@ pub fn reset_password(
 /// If an unexpected errors occur, fails with an `InternalServiceError` status.
 #[get("/user/<user_id>")]
 pub fn get_by_id(user_id: i32, conn: DbConn) -> Result<Json<UserInfo>, ErrStatus> {
-    use db::schema::users::dsl::*;
+    use db::schema::users;
 
-    let user = users
+    let user = users::table
         .find(user_id)
         .first::<User>(&*conn)
         .map_err(log_db_err)?;
@@ -185,11 +157,23 @@ pub fn get_by_id(user_id: i32, conn: DbConn) -> Result<Json<UserInfo>, ErrStatus
     Ok(Json(user.into()))
 }
 
-/// Hash and salt a password.
-fn hash_password(user: &mut NewUser) -> Result<(), bcrypt::BcryptError> {
-    debug!("hashing password");
-    user.password = bcrypt::hash(&user.password, DEFAULT_COST)?;
-    Ok(())
+// Note: `offset` usage here has bad performance on large page numbers
+/// Gets a page of global users.
+/// If an unexpected error occurs, fails with an `InternalServiceError` status.
+#[get("/user?<query>")]
+pub fn get_all(query: QueryString, conn: DbConn) -> Result<Json<Vec<UserInfo>>, ErrStatus> {
+    use db::schema::users;
+    let page = query.page.0;
+
+    let result = users::table
+        .offset(page * PAGE_SIZE)
+        .limit(PAGE_SIZE)
+        .get_results::<User>(&*conn)
+        .map_err(log_db_err)?;
+
+    let result = result.into_iter().map(Into::into).collect();
+
+    Ok(Json(result))
 }
 
 /// Create an auth token containing a user's account details.
