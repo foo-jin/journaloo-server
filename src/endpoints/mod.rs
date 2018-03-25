@@ -34,6 +34,8 @@ struct Page(i64);
 impl<'v> FromFormValue<'v> for Page {
     type Error = &'v RawStr;
 
+    /// Parses page number from forms.
+    /// Will fail if the the page number is smaller than zero.
     fn from_form_value(form_value: &'v RawStr) -> Result<Self, &'v RawStr> {
         match form_value.parse::<i64>() {
             Ok(page) if page >= 0 => Ok(Page(page)),

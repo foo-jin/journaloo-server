@@ -55,6 +55,7 @@ pub fn get_all(query: QueryString, conn: DbConn) -> Result<Json<Vec<Entry>>, Err
 
     let result = entries::table
         .order(entries::created.desc())
+        .filter(entries::archived.eq(false))
         .offset(page * PAGE_SIZE)
         .limit(PAGE_SIZE)
         .get_results::<Entry>(&*conn)
@@ -65,7 +66,7 @@ pub fn get_all(query: QueryString, conn: DbConn) -> Result<Json<Vec<Entry>>, Err
 
 /// Gets a page of a specific journey's entries.
 /// If the journey does not exist, fails with a `NotFound` status.
-/// If an unexpected error occurs, fails with an `InteralServiceError` status.
+/// If an unexpected error occurs, fails with an `InternalServiceError` status.
 #[get("/entry/<jid>?<query>")]
 pub fn get_by_journey(
     jid: i32,

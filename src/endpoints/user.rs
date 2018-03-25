@@ -15,8 +15,7 @@ use sendgrid::sg_client::SGClient;
 use super::{log_db_err, log_err, ErrStatus};
 use db::DbConn;
 use db::models::user::{self, NewUser, User, UserInfo};
-use endpoints::PAGE_SIZE;
-use endpoints::QueryString;
+use endpoints::{QueryString, PAGE_SIZE};
 
 /// Registers a new user.
 /// If the username or email is taken, fails with a `BadRequest` status.
@@ -151,6 +150,21 @@ pub fn get_by_id(user_id: i32, conn: DbConn) -> Result<Json<UserInfo>, ErrStatus
 
     let user = users::table
         .find(user_id)
+        .first::<User>(&*conn)
+        .map_err(log_db_err)?;
+
+    Ok(Json(user.into()))
+}
+
+/// Get a user by user ID.
+/// If the user does not exist, fails with a `NotFound` status.
+/// If an unexpected errors occur, fails with an `InternalServiceError` status.
+#[get("/user/<username>")]
+pub fn get_by_username(username: String, conn: DbConn) -> Result<Json<UserInfo>, ErrStatus> {
+    use db::schema::users;
+
+    let user = users::table
+        .filter(users::username.eq(username))
         .first::<User>(&*conn)
         .map_err(log_db_err)?;
 
