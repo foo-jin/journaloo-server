@@ -45,7 +45,7 @@ impl<'v> FromFormValue<'v> for Page {
 }
 
 #[derive(FromForm)]
-pub struct QueryString {
+pub struct PageQuery {
     page: Page,
 }
 

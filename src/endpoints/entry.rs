@@ -9,7 +9,8 @@ use db::models::entry::{self, Entry, NewEntry};
 use db::models::journey::Journey;
 use db::models::user::UserInfo;
 use endpoints::PAGE_SIZE;
-use endpoints::QueryString;
+use endpoints::PageQuery;
+use endpoints::Page;
 
 /// Creates a new entry.
 /// If the journey does not exist, fails with a `NotFound` status.
@@ -45,41 +46,30 @@ pub fn delete(entry_id: i32, conn: DbConn) -> Result<(), ErrStatus> {
     entry::archive(entry_id, &*conn).map_err(log_db_err)
 }
 
-// Note: `offset` usage here has bad performance on large page numbers
-/// Gets a page of global entries.
-/// If an unexpected error occurs, fails with an `InternalServiceError` status.
-#[get("/entry?<query>")]
-pub fn get_all(query: QueryString, conn: DbConn) -> Result<Json<Vec<Entry>>, ErrStatus> {
-    use db::schema::entries;
-    let page = query.page.0;
-
-    let result = entries::table
-        .order(entries::created.desc())
-        .filter(entries::archived.eq(false))
-        .offset(page * PAGE_SIZE)
-        .limit(PAGE_SIZE)
-        .get_results::<Entry>(&*conn)
-        .map_err(log_db_err)?;
-
-    Ok(Json(result))
+#[derive(FromForm)]
+pub struct EntryQuery {
+    page: Page,
+    journey: Option<i32>,
 }
 
-/// Gets a page of a specific journey's entries.
-/// If the journey does not exist, fails with a `NotFound` status.
+// Note: `offset` usage here has bad performance on large page numbers
+/// Gets a page of entries according to the query-string.
+/// If a nonexistent journey ID is given, fails with a `NotFound` status.
 /// If an unexpected error occurs, fails with an `InternalServiceError` status.
-#[get("/entry/<jid>?<query>")]
-pub fn get_by_journey(
-    jid: i32,
-    query: QueryString,
-    conn: DbConn,
-) -> Result<Json<Vec<Entry>>, ErrStatus> {
+#[get("/entry/all?<query>")]
+pub fn get_all(query: EntryQuery, conn: DbConn) -> Result<Json<Vec<Entry>>, ErrStatus> {
     use db::schema::entries;
     let page = query.page.0;
 
-    let result = entries::table
+    let mut target = entries::table
         .order(entries::created.desc())
-        .filter(entries::journey_id.eq(jid))
-        .filter(entries::archived.eq(false))
+        .filter(entries::archived.eq(false)).into_boxed();
+
+    if let Some(jid) = query.journey {
+        target = target.filter(entries::journey_id.eq(jid));
+    }
+
+    let result = target
         .offset(page * PAGE_SIZE)
         .limit(PAGE_SIZE)
         .get_results::<Entry>(&*conn)
