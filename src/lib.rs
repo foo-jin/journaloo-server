@@ -61,7 +61,6 @@ pub fn rocket() -> Rocket {
             entry::create,
             entry::delete,
             entry::get_all,
-            entry::get_by_journey
         ],
     )
 }

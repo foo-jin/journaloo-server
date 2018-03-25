@@ -145,7 +145,7 @@ fn reset_password_errors() {
 
 #[test]
 fn paging_errors() {
-    let mut response = client.get("/user?page=0").dispatch();
+    let mut response = client.get("/user/all?page=0").dispatch();
     let users: Vec<UserInfo> = serde_json::from_str(&response.body_string().expect("no body found")).expect("failed to deserialize");
     users.iter().for_each(|u| println!("{:?}", u));
 

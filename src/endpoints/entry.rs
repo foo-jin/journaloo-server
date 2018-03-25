@@ -8,9 +8,7 @@ use db::DbConn;
 use db::models::entry::{self, Entry, NewEntry};
 use db::models::journey::Journey;
 use db::models::user::UserInfo;
-use endpoints::PAGE_SIZE;
-use endpoints::PageQuery;
-use endpoints::Page;
+use endpoints::{Page, PAGE_SIZE};
 
 /// Creates a new entry.
 /// If the journey does not exist, fails with a `NotFound` status.
