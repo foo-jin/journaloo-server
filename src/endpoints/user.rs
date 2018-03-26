@@ -15,7 +15,7 @@ use sendgrid::sg_client::SGClient;
 use super::{log_db_err, log_err, ErrStatus};
 use db::DbConn;
 use db::models::user::{self, NewUser, User, UserInfo};
-use endpoints::{PageQuery, PAGE_SIZE};
+use endpoints::{Page, PAGE_SIZE};
 
 /// Registers a new user.
 /// If the username or email is taken, fails with a `BadRequest` status.
@@ -156,15 +156,28 @@ pub fn get_by_id(user_id: i32, conn: DbConn) -> Result<Json<UserInfo>, ErrStatus
     Ok(Json(user.into()))
 }
 
+#[derive(FromForm)]
+pub struct UserQuery {
+    page: Page,
+    name: Option<String>,
+}
+
 // Note: `offset` usage here has bad performance on large page numbers
 /// Gets a page of global users.
 /// If an unexpected error occurs, fails with an `InternalServiceError` status.
 #[get("/user/all?<query>")]
-pub fn get_all(query: PageQuery, conn: DbConn) -> Result<Json<Vec<UserInfo>>, ErrStatus> {
+pub fn get_all(query: UserQuery, conn: DbConn) -> Result<Json<Vec<UserInfo>>, ErrStatus> {
     use db::schema::users;
     let page = query.page.0;
 
-    let result = users::table
+    let mut target = users::table.into_boxed();
+
+    if let Some(name) = query.name {
+        let search = format!("{}%", name);
+        target = target.filter(users::username.ilike(search));
+    }
+
+    let result = target
         .offset(page * PAGE_SIZE)
         .limit(PAGE_SIZE)
         .get_results::<User>(&*conn)

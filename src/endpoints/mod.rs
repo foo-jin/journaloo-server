@@ -29,6 +29,8 @@ fn log_db_err(e: Error) -> ErrStatus {
     }
 }
 
+const PAGE_SIZE: i64 = 10;
+
 struct Page(i64);
 
 impl<'v> FromFormValue<'v> for Page {
@@ -44,9 +46,4 @@ impl<'v> FromFormValue<'v> for Page {
     }
 }
 
-#[derive(FromForm)]
-pub struct PageQuery {
-    page: Page,
-}
 
-const PAGE_SIZE: i64 = 10;
