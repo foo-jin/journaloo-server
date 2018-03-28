@@ -1,16 +1,14 @@
-use super::log_db_err;
-
-use db::DbConn;
-use db::models::entry::{self, Entry, NewEntry};
-use db::models::journey::Journey;
-use db::models::user::UserInfo;
-
 use diesel::prelude::*;
 use rocket::http::Status;
 use rocket::response::status;
 use rocket_contrib::Json;
 
-const PAGE_SIZE: i64 = 10;
+use super::{log_db_err, ErrStatus};
+use db::DbConn;
+use db::models::entry::{self, Entry, NewEntry};
+use db::models::journey::Journey;
+use db::models::user::UserInfo;
+use endpoints::{Page, PAGE_SIZE};
 
 /// Creates a new entry.
 /// If the journey does not exist, fails with a `NotFound` status.
@@ -21,16 +19,16 @@ pub fn create(
     new_entry: Json<NewEntry>,
     _user: UserInfo,
     conn: DbConn,
-) -> Result<status::Created<Json<Entry>>, Status> {
-    use db::schema::journeys::dsl::*;
+) -> Result<status::Created<Json<Entry>>, ErrStatus> {
+    use db::schema::journeys;
 
-    let journey = journeys
+    let journey = journeys::table
         .find(new_entry.journey_id)
         .first::<Journey>(&*conn)
         .map_err(log_db_err)?;
 
     if journey.end_date.is_some() {
-        return Err(Status::BadRequest);
+        return Err(status::Custom(Status::BadRequest, ()));
     }
 
     let entry = entry::create(&new_entry, &*conn).map_err(log_db_err)?;
@@ -42,46 +40,34 @@ pub fn create(
 /// If the entry does not exist, fails with a `NotFound` status.
 /// If an unexpected error occurs, fails with an `InternalServiceError` status.
 #[delete("/entry/<entry_id>")]
-pub fn delete(entry_id: i32, conn: DbConn) -> Result<(), Status> {
+pub fn delete(entry_id: i32, conn: DbConn) -> Result<(), ErrStatus> {
     entry::archive(entry_id, &*conn).map_err(log_db_err)
 }
 
 #[derive(FromForm)]
-pub struct Page {
-    page: i64,
+pub struct EntryQuery {
+    page: Page,
+    journey: Option<i32>,
 }
 
-// Todo: verify that offset and limit do not cause errors if they overshoot the
-// total. Note: `offset` usage here has bad performance on large page numbers
-/// Gets a page of global entries.
+// Note: `offset` usage here has bad performance on large page numbers
+/// Gets a page of entries according to the query-string.
+/// If a nonexistent journey ID is given, fails with a `NotFound` status.
 /// If an unexpected error occurs, fails with an `InternalServiceError` status.
-#[get("/entry?<page>")]
-pub fn get_all(page: Page, conn: DbConn) -> Result<Json<Vec<Entry>>, Status> {
-    use db::schema::entries::dsl::*;
-    let page = page.page;
+#[get("/entry/all?<query>")]
+pub fn get_all(query: EntryQuery, conn: DbConn) -> Result<Json<Vec<Entry>>, ErrStatus> {
+    use db::schema::entries;
+    let page = query.page.0;
 
-    let result = entries
-        .order(created.desc())
-        .offset(page * PAGE_SIZE)
-        .limit(page * (PAGE_SIZE + 1))
-        .get_results::<Entry>(&*conn)
-        .map_err(log_db_err)?;
+    let mut target = entries::table
+        .order(entries::created.desc())
+        .filter(entries::archived.eq(false)).into_boxed();
 
-    Ok(Json(result))
-}
+    if let Some(jid) = query.journey {
+        target = target.filter(entries::journey_id.eq(jid));
+    }
 
-/// Gets a page of a specific journey's entries.
-/// If the journey does not exist, fails with a `NotFound` status.
-/// If an unexpected error occurs, fails with an `InteralServiceError` status.
-#[get("/entry/<jid>?<page>")]
-pub fn get_by_journey(jid: i32, page: Page, conn: DbConn) -> Result<Json<Vec<Entry>>, Status> {
-    use db::schema::entries::dsl::*;
-    let page = page.page;
-
-    let result = entries
-        .order(created.desc())
-        .filter(journey_id.eq(jid))
-        .filter(archived.eq(false))
+    let result = target
         .offset(page * PAGE_SIZE)
         .limit(PAGE_SIZE)
         .get_results::<Entry>(&*conn)

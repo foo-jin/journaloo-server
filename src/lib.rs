@@ -12,26 +12,28 @@ extern crate dotenv;
 extern crate jsonwebtoken as jwt;
 #[macro_use]
 extern crate lazy_static;
-extern crate lettre;
-extern crate lettre_email;
 #[macro_use]
 extern crate log;
 extern crate pretty_env_logger as env_logger;
 extern crate r2d2;
 extern crate r2d2_diesel;
+extern crate rand;
 extern crate rocket;
 extern crate rocket_contrib;
+extern crate sendgrid;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 
-use db::init_pool;
-use endpoints::*;
-use rocket::Rocket;
 use std::env;
 
-pub mod db;
-pub mod endpoints;
+use endpoints::{entry, user};
+use rocket::Rocket;
+
+use db::init_pool;
+
+mod db;
+mod endpoints;
 
 lazy_static!(
     static ref SECRET: String = env::var("JWT_SECRET").expect("SECRET must be set");
@@ -40,7 +42,7 @@ lazy_static!(
 pub fn rocket() -> Rocket {
     dotenv::dotenv().ok();
 
-    let _ = env_logger::try_init();
+    //let _ = env_logger::try_init();
     let pool = init_pool();
 
     // Configure our server, and mount all routes.  We don't "launch" the server
@@ -54,11 +56,11 @@ pub fn rocket() -> Rocket {
             user::delete,
             user::login,
             user::get_by_id,
+            user::get_all,
             user::reset_password,
             entry::create,
             entry::delete,
             entry::get_all,
-            entry::get_by_journey
         ],
     )
 }
