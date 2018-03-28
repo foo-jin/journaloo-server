@@ -40,9 +40,9 @@ pub struct UserLogin<'a> {
 
 lazy_static! {
     static ref JD_INFO: UserInfo = UserInfo {
-        id: 19,
-        username: "jondoe".to_string(),
-        email: "jon@doe.com".to_string(),
+        id: 101,
+        username: "JonDoe2".to_string(),
+        email: "jon2@doe.com".to_string(),
     };
 
     static ref JD_LOGIN: UserLogin<'static> = UserLogin {
@@ -142,7 +142,7 @@ fn reset_password_errors() {
 
 #[test]
 fn paging_errors() {
-    let mut response = client.get("/user/all?page=0&name=jondoe").dispatch();
+    let mut response = client.get("/user/all?page=0").dispatch();
     let users: Vec<UserInfo> = serde_json::from_str(&response.body_string().expect("no body found")).expect("failed to deserialize");
     users.iter().for_each(|u| println!("{:?}", u));
 

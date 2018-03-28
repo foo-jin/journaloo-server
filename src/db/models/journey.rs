@@ -4,8 +4,6 @@ use db::models::user::UserInfo;
 use diesel;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
-use jwt::{decode, Validation};
-use rocket::request::{self, FromRequest};
 
 #[derive(Queryable, Identifiable, Associations, Debug, Serialize, Deserialize)]
 #[belongs_to(UserInfo, foreign_key = "user_id")]
