@@ -68,6 +68,10 @@ pub fn rocket() -> Rocket {
             entry::create,
             entry::delete,
             entry::get_all,
+            entry::update,
+            entry::get_image_by_id,
+            entry::get_by_id,
+            entry::create_image,
         ],
     )
 }

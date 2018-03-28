@@ -1,10 +1,10 @@
 use std::fmt::Debug;
 
 use diesel::result::Error;
-use rocket::http::Status;
-use rocket::response::status;
-use rocket::request::FromFormValue;
 use rocket::http::RawStr;
+use rocket::http::Status;
+use rocket::request::FromFormValue;
+use rocket::response::status;
 
 pub mod user;
 pub mod journey;
@@ -41,9 +41,7 @@ impl<'v> FromFormValue<'v> for Page {
     fn from_form_value(form_value: &'v RawStr) -> Result<Self, &'v RawStr> {
         match form_value.parse::<i64>() {
             Ok(page) if page >= 0 => Ok(Page(page)),
-            _ => Err(form_value)
+            _ => Err(form_value),
         }
     }
 }
-
-
