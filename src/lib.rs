@@ -27,7 +27,7 @@ extern crate serde_derive;
 
 use std::env;
 
-use endpoints::{entry, user};
+use endpoints::{entry, journey, user};
 use rocket::Rocket;
 
 use db::init_pool;
@@ -58,6 +58,13 @@ pub fn rocket() -> Rocket {
             user::get_by_id,
             user::get_all,
             user::reset_password,
+            journey::create,
+            journey::get_by_id,
+            journey::delete,
+            journey::update,
+            journey::get_journeys_by_user,
+            journey::get_active_journey_by_user,
+            journey::end,
             entry::create,
             entry::delete,
             entry::get_all,

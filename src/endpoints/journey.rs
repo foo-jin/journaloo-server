@@ -1,3 +1,12 @@
+use diesel::prelude::*;
+use rocket_contrib::Json;
+use diesel::dsl::now;
+use diesel;
+
+use super::{log_db_err, ErrStatus};
+use db::DbConn;
+use db::models::journey::Journey;
+use db::models::user::UserInfo;
 use db::DbConn;
 use db::models::journey::{self, Journey, NewJourney};
 use db::schema::journeys;
@@ -23,7 +32,7 @@ pub fn create(
 
 /// Return a Json Journey object of the journey that matches the id
 #[get("/journey/<jid>")]
-pub fn get_journey(jid: i32, conn: DbConn) -> Result<Json<Journey>, Status> {
+pub fn get_by_id(jid: i32, conn: DbConn) -> Result<Json<Journey>, Status> {
     use db::schema::journeys::dsl::*;
 
     let journey = journeys.find(&jid).first(&*conn).map_err(log_db_err)?;
@@ -32,7 +41,7 @@ pub fn get_journey(jid: i32, conn: DbConn) -> Result<Json<Journey>, Status> {
 
 /// Set a journey status to "archived", simulating deletion
 #[delete("/journey/<jid>")]
-pub fn delete_journey(jid: i32, user: UserInfo, conn: DbConn) -> Result<(), Status> {
+pub fn delete(jid: i32, user: UserInfo, conn: DbConn) -> Result<(), Status> {
     use db::schema::journeys::dsl::*;
 
     diesel::update(journeys.filter(user_id.eq(user.id)).find(jid))
@@ -44,7 +53,7 @@ pub fn delete_journey(jid: i32, user: UserInfo, conn: DbConn) -> Result<(), Stat
 
 /// Update the journey that matches the passed id
 #[put("/journey", format = "application/json", data = "<journey>")]
-pub fn update_journey(journey: Json<Journey>, conn: DbConn) -> Result<(), Status> {
+pub fn update(journey: Json<Journey>, conn: DbConn) -> Result<(), Status> {
     use db::schema::journeys::dsl::*;
 
     let journey = journey.into_inner();
@@ -88,6 +97,22 @@ pub fn get_active_journey_by_user(uid: i32, conn: DbConn) -> Result<Json<Journey
         .filter(archived.eq(false))
         .filter(end_date.is_null())
         .first::<Journey>(&*conn)
+        .map_err(log_db_err)?;
+
+    Ok(Json(result))
+}
+
+/// Updates the end_date field of a journey.
+/// If the journey does not exist, or has ended already, fails with a `NotFound` status.
+/// If an unexpected error occurs, fails with an `InternalServerError` status.
+#[put("/journey/<jid>/end")]
+pub fn end(jid: i32, _user: UserInfo, conn: DbConn) -> Result<Json<Journey>, ErrStatus> {
+    use db::schema::journeys;
+
+    let target = journeys::table.find(jid).filter(journeys::archived.eq(false));
+    let result = diesel::update(target)
+        .set(journeys::end_date.eq(now.nullable()))
+        .get_result::<Journey>(&*conn)
         .map_err(log_db_err)?;
 
     Ok(Json(result))

@@ -3,12 +3,11 @@ use rocket::http::Status;
 use rocket::response::status;
 use rocket_contrib::Json;
 
-use super::{log_db_err, ErrStatus};
+use super::{log_db_err, ErrStatus, Page, PAGE_SIZE};
 use db::DbConn;
 use db::models::entry::{self, Entry, NewEntry};
 use db::models::journey::Journey;
 use db::models::user::UserInfo;
-use endpoints::{Page, PAGE_SIZE};
 
 /// Creates a new entry.
 /// If the journey does not exist, fails with a `NotFound` status.
