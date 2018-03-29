@@ -28,7 +28,10 @@ pub struct NewEntry {
 }
 
 /// Creates an entry record in the database
-pub fn create(entry: &NewEntry, conn: &PgConnection) -> diesel::QueryResult<Entry> {
+pub fn create(
+    entry: &NewEntry,
+    conn: &PgConnection,
+) -> diesel::QueryResult<Entry> {
     use db::schema::entries::dsl::*;
     debug!("creating entry record in db");
 
@@ -75,7 +78,8 @@ mod tests {
             location: Some("barcelona".to_string()),
         };
 
-        let expected = create(&new_entry, &conn).expect("failed to create entry");
+        let expected =
+            create(&new_entry, &conn).expect("failed to create entry");
         let result = entries
             .find(expected.id)
             .first::<Entry>(&*conn)

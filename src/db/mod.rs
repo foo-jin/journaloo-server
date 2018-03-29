@@ -11,8 +11,8 @@ use rocket::State;
 use rocket::http::Status;
 use rocket::request::{self, FromRequest};
 
-pub mod schema;
 pub mod models;
+pub mod schema;
 
 // Alias to the type for a pool of Diesel PostgreSQL connections.
 pub type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
@@ -21,9 +21,9 @@ pub type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
 pub fn init_pool() -> Pool {
     dotenv().ok();
 
-    // We need to make sure our database_url is set in our `.env` file. This will
-    // point to our Postgres database.  If none is supplied, the program will
-    // error.
+    // We need to make sure our database_url is set in our `.env` file. This
+    // will point to our Postgres database.  If none is supplied, the
+    // program will error.
     let db_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let manager = ConnectionManager::<PgConnection>::new(db_url);
 
@@ -73,7 +73,9 @@ fn get_test_conn() -> DbConn {
         static ref test_pool: Pool = init_pool();
     }
 
-    let conn = test_pool.get().expect("failed to get db connection");
+    let conn = test_pool
+        .get()
+        .expect("failed to get db connection");
     conn.begin_test_transaction()
         .expect("failed to initialize test transaction");
 

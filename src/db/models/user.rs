@@ -43,7 +43,10 @@ pub struct UserInfo {
 }
 
 /// Creates a user record in the database
-pub fn create(user: &NewUser, conn: &PgConnection) -> diesel::QueryResult<UserInfo> {
+pub fn create(
+    user: &NewUser,
+    conn: &PgConnection,
+) -> diesel::QueryResult<UserInfo> {
     use db::schema::users::dsl::*;
     debug!("creating user record in db");
 
@@ -93,9 +96,11 @@ pub fn delete(user: UserInfo, conn: &PgConnection) -> diesel::QueryResult<()> {
     let mut del_entries = 0;
 
     for journey in Journey::belonging_to(&user).load::<Journey>(&*conn)? {
-        del_entries += diesel::delete(Entry::belonging_to(&journey)).execute(&*conn)?;
+        del_entries +=
+            diesel::delete(Entry::belonging_to(&journey)).execute(&*conn)?;
 
-        del_journeys += diesel::delete(journeys.find(journey.id)).execute(&*conn)?;
+        del_journeys +=
+            diesel::delete(journeys.find(journey.id)).execute(&*conn)?;
     }
 
     let target = users.find(user.id);
@@ -113,19 +118,28 @@ impl<'a, 'r> FromRequest<'a, 'r> for UserInfo {
     type Error = ();
 
     /// Request guard for user authentication
-    fn from_request(request: &'a Request<'r>) -> request::Outcome<Self, Self::Error> {
+    fn from_request(
+        request: &'a Request<'r>,
+    ) -> request::Outcome<Self, Self::Error> {
         use SECRET;
         debug!("verifying auth token");
 
         let token = match request.headers().get_one("Authorization") {
             Some(jwt) => jwt,
             None => {
-                debug!("Unauthorized request -- no token present: {}", request);
+                debug!(
+                    "Unauthorized request -- no token present: {}",
+                    request
+                );
                 return Outcome::Failure((Status::Unauthorized, ()));
             }
         };
 
-        let token = match decode::<UserInfo>(token, SECRET.as_bytes(), &Validation::default()) {
+        let token = match decode::<UserInfo>(
+            token,
+            SECRET.as_bytes(),
+            &Validation::default(),
+        ) {
             Ok(token) => token,
             Err(e) => {
                 debug!("Unauthorized request -- {:?}: {}", e, request);
@@ -133,7 +147,10 @@ impl<'a, 'r> FromRequest<'a, 'r> for UserInfo {
             }
         };
 
-        debug!("Authorized request, username = {}", token.claims.username);
+        debug!(
+            "Authorized request, username = {}",
+            token.claims.username
+        );
         Outcome::Success(token.claims)
     }
 }
@@ -148,9 +165,12 @@ fn hash_password(mut user: NewUser) -> Result<NewUser, bcrypt::BcryptError> {
 impl FromData for NewUser {
     type Error = ();
 
-    /// Request guard for user creation. Will return errors if either the json is invalid
-    /// or if the password failed to hash.
-    fn from_data(request: &Request, data: Data) -> data::Outcome<Self, Self::Error> {
+    /// Request guard for user creation. Will return errors if either the json
+    /// is invalid or if the password failed to hash.
+    fn from_data(
+        request: &Request,
+        data: Data,
+    ) -> data::Outcome<Self, Self::Error> {
         let json = Json::<NewUser>::from_data(request, data)
             .success_or(())
             .into_outcome(Status::BadRequest)?;
@@ -219,7 +239,8 @@ mod tests {
         let user = create(&new_user, &conn).expect("failed to create user");
 
         new_user.username = "bar".to_string();
-        let expected = update(&user, &new_user, &*conn).expect("failed to update user");
+        let expected =
+            update(&user, &new_user, &*conn).expect("failed to update user");
         let result = users
             .filter(username.eq(new_user.username))
             .first::<User>(&*conn)

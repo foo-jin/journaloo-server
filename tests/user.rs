@@ -44,18 +44,16 @@ lazy_static! {
         username: "JonDoe2".to_string(),
         email: "jon2@doe.com".to_string(),
     };
-
     static ref JD_LOGIN: UserLogin<'static> = UserLogin {
         username: &JD_INFO.username,
         password: "asdf",
     };
-
     static ref SECRET: String = {
         dotenv::dotenv().ok();
         env::var("JWT_SECRET").expect("SECRET must be set")
     };
-
-    static ref client: Client = Client::new(launch()).expect("valid rocket instance");
+    static ref client: Client =
+        Client::new(launch()).expect("valid rocket instance");
 }
 
 fn check_signup(user: &NewUser) {
@@ -86,17 +84,22 @@ fn signup_errors() {
 
 #[test]
 fn get() {
-    let mut response = client.get(format!("/user/{}", JD_INFO.id)).dispatch();
+    let mut response = client
+        .get(format!("/user/{}", JD_INFO.id))
+        .dispatch();
 
     assert_eq!(response.status(), Status::Ok);
     assert_eq!(response.content_type(), Some(ContentType::JSON));
 
-    let result: UserInfo = serde_json::from_str(&response.body_string().expect("no body found"))
-        .expect("failed to deserialize");
+    let result: UserInfo =
+        serde_json::from_str(&response.body_string().expect("no body found"))
+            .expect("failed to deserialize");
 
     assert_eq!(result, *JD_INFO);
 
-    response = client.get(format!("user/{}", JD_INFO.id - 1)).dispatch();
+    response = client
+        .get(format!("user/{}", JD_INFO.id - 1))
+        .dispatch();
 
     assert_eq!(response.status(), Status::NotFound);
 }
@@ -111,11 +114,17 @@ fn login() {
         .dispatch();
 
     assert_eq!(response.status(), Status::Ok);
-    assert_eq!(response.content_type(), Some(ContentType::Plain));
+    assert_eq!(
+        response.content_type(),
+        Some(ContentType::Plain)
+    );
 
     let body = response.body_string().expect("no body found");
-    let token = jwt::decode::<UserInfo>(&body, SECRET.as_bytes(), &jwt::Validation::default())
-        .expect("failed to decode auth token");
+    let token = jwt::decode::<UserInfo>(
+        &body,
+        SECRET.as_bytes(),
+        &jwt::Validation::default(),
+    ).expect("failed to decode auth token");
 
     assert_eq!(token.claims, *JD_INFO);
 
@@ -135,7 +144,9 @@ fn login() {
 
 #[test]
 fn reset_password_errors() {
-    let response = client.put("/user/asdf***@madeup.com/reset").dispatch();
+    let response = client
+        .put("/user/asdf***@madeup.com/reset")
+        .dispatch();
 
     assert_eq!(response.status(), Status::NotFound);
 }
@@ -143,7 +154,9 @@ fn reset_password_errors() {
 #[test]
 fn paging_errors() {
     let mut response = client.get("/user/all?page=0").dispatch();
-    let users: Vec<UserInfo> = serde_json::from_str(&response.body_string().expect("no body found")).expect("failed to deserialize");
+    let users: Vec<UserInfo> =
+        serde_json::from_str(&response.body_string().expect("no body found"))
+            .expect("failed to deserialize");
     users.iter().for_each(|u| println!("{:?}", u));
 
     response = client.get("/user?page=-1").dispatch();

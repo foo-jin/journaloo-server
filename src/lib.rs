@@ -20,10 +20,13 @@ extern crate r2d2_diesel;
 extern crate rand;
 extern crate rocket;
 extern crate rocket_contrib;
+extern crate rusoto_core;
+extern crate rusoto_s3;
 extern crate sendgrid;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+extern crate futures;
 
 use std::env;
 
@@ -35,9 +38,10 @@ use db::init_pool;
 mod db;
 mod endpoints;
 
-lazy_static!(
-    static ref SECRET: String = env::var("JWT_SECRET").expect("SECRET must be set");
-);
+lazy_static! {
+    static ref SECRET: String =
+        env::var("JWT_SECRET").expect("SECRET must be set");
+}
 
 pub fn rocket() -> Rocket {
     dotenv::dotenv().ok();

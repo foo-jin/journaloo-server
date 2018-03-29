@@ -1,12 +1,12 @@
+use diesel;
+use diesel::dsl::now;
 use diesel::prelude::*;
 use rocket_contrib::Json;
-use diesel::dsl::now;
-use diesel;
 
-use super::{Page, PAGE_SIZE, log_db_err, ErrStatus};
+use super::{log_db_err, ErrStatus, Page, PAGE_SIZE};
 use db::DbConn;
-use db::models::user::UserInfo;
 use db::models::journey::{self, Journey, NewJourney};
+use db::models::user::UserInfo;
 
 use rocket::response::status;
 
@@ -18,7 +18,10 @@ pub fn create(
     let journey = journey.into_inner();
     let journey = journey::create(&conn, &journey).map_err(log_db_err)?;
 
-    Ok(status::Created(String::new(), Some(Json(journey))))
+    Ok(status::Created(
+        String::new(),
+        Some(Json(journey)),
+    ))
 }
 
 /// Return a Json Journey object of the journey that matches the id
@@ -26,7 +29,10 @@ pub fn create(
 pub fn get_by_id(jid: i32, conn: DbConn) -> Result<Json<Journey>, ErrStatus> {
     use db::schema::journeys::dsl::*;
 
-    let journey = journeys.find(&jid).first(&*conn).map_err(log_db_err)?;
+    let journey = journeys
+        .find(&jid)
+        .first(&*conn)
+        .map_err(log_db_err)?;
     Ok(Json(journey))
 }
 
@@ -84,7 +90,10 @@ pub fn get_journeys_by_user(
 
 /// Get the current active journey of a user
 #[get("/journey/<uid>/active")]
-pub fn get_active_journey_by_user(uid: i32, conn: DbConn) -> Result<Json<Journey>, ErrStatus> {
+pub fn get_active_journey_by_user(
+    uid: i32,
+    conn: DbConn,
+) -> Result<Json<Journey>, ErrStatus> {
     use db::schema::journeys::dsl::*;
 
     let result = journeys
@@ -99,13 +108,20 @@ pub fn get_active_journey_by_user(uid: i32, conn: DbConn) -> Result<Json<Journey
 }
 
 /// Updates the end_date field of a journey.
-/// If the journey does not exist, or has ended already, fails with a `NotFound` status.
-/// If an unexpected error occurs, fails with an `InternalServerError` status.
+/// If the journey does not exist, or has ended already, fails with a
+/// `NotFound` status. If an unexpected error occurs, fails with an
+/// `InternalServerError` status.
 #[put("/journey/<jid>/end")]
-pub fn end(jid: i32, _user: UserInfo, conn: DbConn) -> Result<Json<Journey>, ErrStatus> {
+pub fn end(
+    jid: i32,
+    _user: UserInfo,
+    conn: DbConn,
+) -> Result<Json<Journey>, ErrStatus> {
     use db::schema::journeys;
 
-    let target = journeys::table.find(jid).filter(journeys::archived.eq(false));
+    let target = journeys::table
+        .find(jid)
+        .filter(journeys::archived.eq(false));
     let result = diesel::update(target)
         .set(journeys::end_date.eq(now.nullable()))
         .get_result::<Journey>(&*conn)

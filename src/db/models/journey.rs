@@ -5,7 +5,8 @@ use diesel;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
 
-#[derive(Queryable, Identifiable, Associations, Debug, Serialize, Deserialize)]
+#[derive(Queryable, Identifiable, Associations, Debug, Serialize,
+         Deserialize)]
 #[belongs_to(UserInfo, foreign_key = "user_id")]
 pub struct Journey {
     pub id: i32,
@@ -24,7 +25,10 @@ pub struct NewJourney {
 }
 
 /// inserts journey into database
-pub fn create(conn: &PgConnection, journey: &NewJourney) -> diesel::QueryResult<Journey> {
+pub fn create(
+    conn: &PgConnection,
+    journey: &NewJourney,
+) -> diesel::QueryResult<Journey> {
     diesel::insert_into(journeys::table)
         .values(journey)
         .get_result::<Journey>(conn)

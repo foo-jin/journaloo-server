@@ -21,7 +21,10 @@ use endpoints::{Page, PAGE_SIZE};
 /// If the username or email is taken, fails with a `BadRequest` status.
 /// If an unexpected error occurs, fails with an `InternalServiceError` status.
 #[post("/user", format = "application/json", data = "<user>")]
-pub fn signup(user: NewUser, conn: DbConn) -> Result<status::Created<String>, ErrStatus> {
+pub fn signup(
+    user: NewUser,
+    conn: DbConn,
+) -> Result<status::Created<String>, ErrStatus> {
     use db::schema::users;
     use diesel::result::Error;
 
@@ -49,7 +52,8 @@ pub fn update(
     updated_user: NewUser,
     conn: DbConn,
 ) -> Result<String, ErrStatus> {
-    let user_info = user::update(&old_user, &updated_user, &*conn).map_err(log_db_err)?;
+    let user_info =
+        user::update(&old_user, &updated_user, &*conn).map_err(log_db_err)?;
     let token = issue_token(&user_info).map_err(log_err)?;
 
     Ok(token)
@@ -74,7 +78,10 @@ pub struct UserLogin {
 /// If the credentials do not match, fails with an `Unauthorized` status.
 /// If an unexpected errors occur, fails with an `InternalServiceError` status.
 #[post("/user/login", format = "application/json", data = "<user_login>")]
-pub fn login(user_login: Json<UserLogin>, conn: DbConn) -> Result<String, ErrStatus> {
+pub fn login(
+    user_login: Json<UserLogin>,
+    conn: DbConn,
+) -> Result<String, ErrStatus> {
     use db::schema::users;
 
     let user = users::table
@@ -94,8 +101,9 @@ pub fn login(user_login: Json<UserLogin>, conn: DbConn) -> Result<String, ErrSta
 
 /// Reset a user's password.
 /// Only confirmed to work with gmail accounts.
-/// If the email does not belong to an existing user, fail with `NotFound` status.
-/// If an unexpected errors occur, fails with an `InternalServiceError` status.
+/// If the email does not belong to an existing user, fail with `NotFound`
+/// status. If an unexpected errors occur, fails with an `InternalServiceError`
+/// status.
 #[put("/user/<email_address>/reset")]
 pub fn reset_password(
     email_address: String,
@@ -117,7 +125,9 @@ pub fn reset_password(
         .map_err(log_db_err)?;
 
     let mut rand = OsRng::new().map_err(log_err)?;
-    let mut new_pass = rand.gen_ascii_chars().take(50).collect::<String>();
+    let mut new_pass = rand.gen_ascii_chars()
+        .take(50)
+        .collect::<String>();
     new_pass = bcrypt::hash(&new_pass, DEFAULT_COST).map_err(log_err)?;
 
     let mut email = Mail::new();
@@ -126,12 +136,15 @@ pub fn reset_password(
     email.add_from_name("journaloo dev team");
     email.add_subject("Password reset");
     email.add_text(format!(
-        "Your password has been reset. You can use the following code to log in during the next \
-         {} hours. After that you will have to request another password reset.\n Code: {}",
+        "Your password has been reset. You can use the following code to log \
+         in during the next {} hours. After that you will have to request \
+         another password reset.\n Code: {}",
         RESET_DURATION, new_pass
     ));
 
-    SGClient::new(API_KEY.clone()).send(email).map_err(log_err)?;
+    SGClient::new(API_KEY.clone())
+        .send(email)
+        .map_err(log_err)?;
 
     diesel::update(users::table.find(user.id))
         .set(users::password.eq(new_pass))
@@ -145,7 +158,10 @@ pub fn reset_password(
 /// If the user does not exist, fails with a `NotFound` status.
 /// If an unexpected errors occur, fails with an `InternalServiceError` status.
 #[get("/user/<user_id>")]
-pub fn get_by_id(user_id: i32, conn: DbConn) -> Result<Json<UserInfo>, ErrStatus> {
+pub fn get_by_id(
+    user_id: i32,
+    conn: DbConn,
+) -> Result<Json<UserInfo>, ErrStatus> {
     use db::schema::users;
 
     let user = users::table
@@ -166,7 +182,10 @@ pub struct UserQuery {
 /// Gets a page of global users.
 /// If an unexpected error occurs, fails with an `InternalServiceError` status.
 #[get("/user/all?<query>")]
-pub fn get_all(query: UserQuery, conn: DbConn) -> Result<Json<Vec<UserInfo>>, ErrStatus> {
+pub fn get_all(
+    query: UserQuery,
+    conn: DbConn,
+) -> Result<Json<Vec<UserInfo>>, ErrStatus> {
     use db::schema::users;
     let page = query.page.0;
 

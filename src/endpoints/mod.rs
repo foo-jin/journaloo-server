@@ -6,9 +6,9 @@ use rocket::http::Status;
 use rocket::request::FromFormValue;
 use rocket::response::status;
 
-pub mod user;
-pub mod journey;
 pub mod entry;
+pub mod journey;
+pub mod user;
 
 type ErrStatus = status::Custom<()>;
 
