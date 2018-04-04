@@ -113,9 +113,9 @@ pub fn create_image(
 
     let mut request = PutObjectRequest::default();
     request.bucket = S3_BUCKET.clone();
-    request.body = Some(buf);
-    //request.content_type = Some("application/base64".to_string());
     request.key = entry_id.to_string();
+    request.body = Some(buf);
+
 
     S3_CLIENT
         .put_object(&request)
