@@ -203,11 +203,13 @@ impl From<User> for UserInfo {
 mod tests {
     use super::*;
     use db::get_test_conn;
+    use env_logger;
 
     #[test]
     fn create_user() {
         use super::users::dsl::*;
         let conn = get_test_conn();
+        let _ = env_logger::try_init();
 
         let new_user = NewUser {
             username: "foo".to_string(),
@@ -228,7 +230,9 @@ mod tests {
     #[test]
     fn update_user() {
         use super::users::dsl::*;
+
         let conn = get_test_conn();
+        let _ = env_logger::try_init();
 
         let mut new_user = NewUser {
             username: "foo".to_string(),
@@ -254,7 +258,9 @@ mod tests {
     fn delete_user() {
         use super::users::dsl::*;
         use diesel::NotFound;
+
         let conn = get_test_conn();
+        let _ = env_logger::try_init();
 
         let new_user = NewUser {
             username: "foo".to_string(),

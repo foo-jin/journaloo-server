@@ -1,3 +1,5 @@
+use std::env;
+
 use diesel;
 use diesel::prelude::*;
 
@@ -8,9 +10,8 @@ use rocket_contrib::Json;
 
 use futures::stream::Stream;
 use rusoto_core::region::Region;
-use rusoto_s3::{GetObjectRequest, PutObjectRequest, S3, S3Client};
-
-use std::env;
+use rusoto_s3::{GetObjectError, GetObjectRequest, PutObjectRequest, S3,
+                S3Client};
 
 use super::{log_db_err, log_err, ErrStatus, Page, PAGE_SIZE};
 use db::DbConn;
@@ -113,7 +114,7 @@ pub fn create_image(
     let mut request = PutObjectRequest::default();
     request.bucket = S3_BUCKET.clone();
     request.body = Some(buf);
-    request.content_type = Some("application/base64".to_string());
+    //request.content_type = Some("application/base64".to_string());
     request.key = entry_id.to_string();
 
     S3_CLIENT
@@ -122,6 +123,16 @@ pub fn create_image(
         .map_err(log_err)?;
 
     Ok(status::Created(String::new(), Some(())))
+}
+
+/// Logs a `GetObjectError` with error priority.
+/// If the error was `NoSuchKey`, returns a `NotFound` status.
+/// Else, returns an `InternalServiceError` status.
+fn log_rusoto_err(e: GetObjectError) -> ErrStatus {
+    match e {
+        GetObjectError::NoSuchKey(_msg) => status::Custom(Status::NotFound, ()),
+        e => log_err(e),
+    }
 }
 
 /// Retrieves the image of an entry.
@@ -135,7 +146,7 @@ pub fn get_image_by_id(entry_id: i32) -> Result<Vec<u8>, ErrStatus> {
     let body = S3_CLIENT
         .get_object(&request)
         .sync()
-        .map_err(log_err)?
+        .map_err(log_rusoto_err)?
         .body
         .ok_or_else(|| log_err("Missing body in response to image request"))?
         .wait()
