@@ -4,7 +4,7 @@ use diesel;
 use diesel::prelude::*;
 
 use rocket::Data;
-use rocket::http::Status;
+use rocket::http::{ContentType, Status};
 use rocket::response::status;
 use rocket_contrib::Json;
 
@@ -97,6 +97,7 @@ lazy_static! {
 #[post("/entry/<entry_id>/image", data = "<image>")]
 pub fn create_image(
     entry_id: i32,
+    content_type: Option<&ContentType>,
     image: Data,
     _auth: UserInfo,
     conn: DbConn,
@@ -112,10 +113,10 @@ pub fn create_image(
     image.stream_to(&mut buf).map_err(log_err)?;
 
     let mut request = PutObjectRequest::default();
+    request.content_type = content_type.map(ToString::to_string);
     request.bucket = S3_BUCKET.clone();
     request.key = entry_id.to_string();
     request.body = Some(buf);
-
 
     S3_CLIENT
         .put_object(&request)
