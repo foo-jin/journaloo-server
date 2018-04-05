@@ -46,7 +46,7 @@ lazy_static! {
 pub fn rocket() -> Rocket {
     dotenv::dotenv().ok();
 
-    let _ = env_logger::try_init();
+    //    let _ = env_logger::try_init();
     let pool = init_pool();
 
     // Configure our server, and mount all routes.  We don't "launch" the server
