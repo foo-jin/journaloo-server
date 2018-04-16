@@ -3,9 +3,9 @@ use std::env;
 use diesel;
 use diesel::prelude::*;
 
+use rocket::Data;
 use rocket::http::{ContentType, Status};
 use rocket::response::status;
-use rocket::Data;
 use rocket_contrib::Json;
 
 use futures::stream::Stream;
@@ -14,10 +14,10 @@ use rusoto_s3::{GetObjectError, GetObjectRequest, PutObjectRequest, S3,
                 S3Client};
 
 use super::{log_db_err, log_err, ErrStatus, Page, PAGE_SIZE};
+use db::DbConn;
 use db::models::entry::{self, Entry, NewEntry};
 use db::models::journey::Journey;
 use db::models::user::UserInfo;
-use db::DbConn;
 
 /// Creates a new entry.
 /// If the journey does not exist, fails with a `NotFound` status.

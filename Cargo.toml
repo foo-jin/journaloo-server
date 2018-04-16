@@ -21,7 +21,6 @@ rusoto_s3 = "*"
 sendgrid = "0.6.2"
 serde = "^1"
 serde_derive = "^1"
-pear_codegen = "0.0.12"
 
 [dependencies.chrono]
 features = ["serde"]

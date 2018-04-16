@@ -4,13 +4,13 @@ use diesel;
 use diesel::prelude::*;
 use jwt::{decode, Validation};
 
+use rocket::Data;
+use rocket::Outcome;
+use rocket::Request;
 use rocket::data::{self, FromData};
 use rocket::http::Status;
 use rocket::outcome::IntoOutcome;
 use rocket::request::{self, FromRequest};
-use rocket::Data;
-use rocket::Outcome;
-use rocket::Request;
 use rocket_contrib::Json;
 
 use db::schema::users;
