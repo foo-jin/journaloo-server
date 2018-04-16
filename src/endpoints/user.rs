@@ -4,8 +4,8 @@ use bcrypt::{self, DEFAULT_COST};
 use diesel;
 use diesel::prelude::*;
 use jwt::{self, Header};
-use rand::Rng;
 use rand::os::OsRng;
+use rand::Rng;
 use rocket::http::Status;
 use rocket::response::status;
 use rocket_contrib::Json;
@@ -13,8 +13,8 @@ use sendgrid::mail::Mail;
 use sendgrid::sg_client::SGClient;
 
 use super::{log_db_err, log_err, ErrStatus};
-use db::DbConn;
 use db::models::user::{self, NewUser, User, UserInfo};
+use db::DbConn;
 use endpoints::{Page, PAGE_SIZE};
 
 /// Registers a new user.

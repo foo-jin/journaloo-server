@@ -4,9 +4,9 @@ use diesel::prelude::*;
 use rocket_contrib::Json;
 
 use super::{log_db_err, ErrStatus, Page, PAGE_SIZE};
-use db::DbConn;
 use db::models::journey::{self, Journey, NewJourney};
 use db::models::user::UserInfo;
+use db::DbConn;
 
 use rocket::response::status;
 
