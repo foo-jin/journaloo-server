@@ -126,7 +126,7 @@ pub fn reset_password(
 
     let mut rand = OsRng::new().map_err(log_err)?;
     let mut new_pass = rand.gen_ascii_chars()
-        .take(50)
+        .take(5)
         .collect::<String>();
     new_pass = bcrypt::hash(&new_pass, DEFAULT_COST).map_err(log_err)?;
 
