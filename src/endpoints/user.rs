@@ -128,7 +128,7 @@ pub fn reset_password(
     let mut new_pass = rand.gen_ascii_chars()
         .take(5)
         .collect::<String>();
-    new_pass = bcrypt::hash(&new_pass, DEFAULT_COST).map_err(log_err)?;
+    let hashed_pass = bcrypt::hash(&new_pass, DEFAULT_COST).map_err(log_err)?;
 
     let mut email = Mail::new();
     email.add_to(email_address);
@@ -147,7 +147,7 @@ pub fn reset_password(
         .map_err(log_err)?;
 
     diesel::update(users::table.find(user.id))
-        .set(users::password.eq(new_pass))
+        .set(users::password.eq(hashed_pass))
         .execute(&*conn)
         .map_err(log_db_err)?;
 
