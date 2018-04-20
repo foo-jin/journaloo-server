@@ -214,6 +214,7 @@ pub fn get_all(
 #[derive(Serialize)]
 pub struct TimezoneEntry {
     pub id: i32,
+    pub user_id: i32,
     pub journey_id: i32,
     pub created: DateTime<FixedOffset>,
     pub archived: bool,
@@ -227,12 +228,12 @@ impl From<Entry> for TimezoneEntry {
         let Entry {
             id,
             journey_id,
+            user_id,
             created,
             archived,
             description,
             coordinates,
-            location,
-            ..
+            location
         } = entry;
 
         let hour = 3600;
@@ -241,6 +242,7 @@ impl From<Entry> for TimezoneEntry {
         TimezoneEntry {
             id,
             journey_id,
+            user_id,
             created,
             archived,
             description,
