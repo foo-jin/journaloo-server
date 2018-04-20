@@ -233,7 +233,7 @@ impl From<Entry> for TimezoneEntry {
             archived,
             description,
             coordinates,
-            location
+            location,
         } = entry;
 
         let hour = 3600;
