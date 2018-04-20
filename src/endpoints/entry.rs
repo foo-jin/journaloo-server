@@ -8,12 +8,14 @@ use rocket::http::{ContentType, Status};
 use rocket::response::status;
 use rocket_contrib::Json;
 
+use chrono::DateTime;
 use futures::stream::Stream;
 use rusoto_core::region::Region;
 use rusoto_s3::{GetObjectError, GetObjectRequest, PutObjectRequest, S3,
                 S3Client};
 
 use super::{log_db_err, log_err, ErrStatus, Page, PAGE_SIZE};
+use chrono::FixedOffset;
 use db::DbConn;
 use db::models::entry::{self, Entry, NewEntry};
 use db::models::journey::Journey;
@@ -28,7 +30,7 @@ pub fn create(
     new_entry: Json<NewEntry>,
     _user: UserInfo,
     conn: DbConn,
-) -> Result<status::Created<Json<Entry>>, ErrStatus> {
+) -> Result<status::Created<Json<TimezoneEntry>>, ErrStatus> {
     use db::schema::journeys;
 
     let journey = journeys::table
@@ -44,7 +46,7 @@ pub fn create(
 
     Ok(status::Created(
         String::new(),
-        Some(Json(entry)),
+        Some(Json(entry.into())),
     ))
 }
 
@@ -54,14 +56,15 @@ pub fn create(
 pub fn get_by_id(
     entry_id: i32,
     conn: DbConn,
-) -> Result<Json<Entry>, ErrStatus> {
+) -> Result<Json<TimezoneEntry>, ErrStatus> {
     use db::schema::entries::dsl::*;
 
-    let entry = entries
+    let entry: Entry = entries
         .find(entry_id)
         .first(&*conn)
         .map_err(log_db_err)?;
-    Ok(Json(entry))
+
+    Ok(Json(entry.into()))
 }
 
 /// Updates an entry.
@@ -83,6 +86,7 @@ pub fn update(
         .set(description.eq(entry.description))
         .execute(&*conn)
         .map_err(log_db_err)?;
+
     Ok(())
 }
 
@@ -182,7 +186,7 @@ pub struct EntryQuery {
 pub fn get_all(
     query: EntryQuery,
     conn: DbConn,
-) -> Result<Json<Vec<Entry>>, ErrStatus> {
+) -> Result<Json<Vec<TimezoneEntry>>, ErrStatus> {
     use db::schema::entries;
     let page = query.page.0;
 
@@ -199,7 +203,48 @@ pub fn get_all(
         .offset(page * PAGE_SIZE)
         .limit(PAGE_SIZE)
         .get_results::<Entry>(&*conn)
-        .map_err(log_db_err)?;
+        .map_err(log_db_err)?
+        .into_iter()
+        .map(Into::into)
+        .collect();
 
     Ok(Json(result))
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct TimezoneEntry {
+    pub id: i32,
+    pub journey_id: i32,
+    pub created: DateTime<FixedOffset>,
+    pub archived: bool,
+    pub description: Option<String>,
+    pub coordinates: Option<String>,
+    pub location: Option<String>,
+}
+
+impl From<Entry> for TimezoneEntry {
+    fn from(entry: Entry) -> Self {
+        let Entry {
+            id,
+            journey_id,
+            created,
+            archived,
+            description,
+            coordinates,
+            location,
+        } = entry;
+
+        let hour = 3600;
+        let created = DateTime::from_utc(created, FixedOffset::east(2 * hour));
+
+        TimezoneEntry {
+            id,
+            journey_id,
+            created,
+            archived,
+            description,
+            coordinates,
+            location,
+        }
+    }
 }
