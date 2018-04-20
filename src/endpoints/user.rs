@@ -111,8 +111,6 @@ pub fn reset_password(
 ) -> Result<status::Accepted<()>, ErrStatus> {
     use db::schema::users;
 
-    const RESET_DURATION: u32 = 5;
-
     lazy_static! {
         static ref API_KEY: String = {
             env::var("SENDGRID_API_KEY").expect("SENDGRID_API_KEY must be set")
@@ -137,9 +135,8 @@ pub fn reset_password(
     email.add_subject("Password reset");
     email.add_text(format!(
         "Your password has been reset. You can use the following code to log \
-         in during the next {} hours. After that you will have to request \
-         another password reset.\n Code: {}",
-        RESET_DURATION, new_pass
+         in.\n Code: {}",
+        new_pass
     ));
 
     SGClient::new(API_KEY.clone())
