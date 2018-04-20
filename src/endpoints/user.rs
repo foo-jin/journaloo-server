@@ -137,8 +137,7 @@ pub fn reset_password(
     email.add_subject("Password reset");
     email.add_text(format!(
         "Your password has been reset. You can use the following code to log \
-         in during the next {} hours. After that you will have to request \
-         another password reset.\n Code: {}",
+         in.\n Code: {}",
         RESET_DURATION, new_pass
     ));
 
