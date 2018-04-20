@@ -11,6 +11,7 @@ use db::schema::entries;
 pub struct Entry {
     pub id: i32,
     pub journey_id: i32,
+    pub user_id: i32,
     pub created: NaiveDateTime,
     pub archived: bool,
     pub description: Option<String>,
@@ -21,6 +22,7 @@ pub struct Entry {
 #[derive(Insertable, Deserialize)]
 #[table_name = "entries"]
 pub struct NewEntry {
+    pub user_id: i32,
     pub journey_id: i32,
     pub description: Option<String>,
     pub coordinates: Option<String>,

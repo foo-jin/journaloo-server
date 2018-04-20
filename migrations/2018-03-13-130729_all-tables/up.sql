@@ -19,6 +19,7 @@ CREATE TABLE journeys (
 CREATE TABLE entries (
   id          SERIAL PRIMARY KEY,
   journey_id  SERIAL REFERENCES journeys (id),
+  user_id     SERIAL REFERENCES users (id),
   created     TIMESTAMP NOT NULL DEFAULT now(),
   archived    BOOLEAN   NOT NULL DEFAULT 'f',
   description VARCHAR,
