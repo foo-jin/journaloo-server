@@ -211,7 +211,7 @@ pub fn get_all(
     Ok(Json(result))
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize)]
 pub struct TimezoneEntry {
     pub id: i32,
     pub journey_id: i32,
